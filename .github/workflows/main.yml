@@ -1,0 +1,50 @@
+name: Flutter Build APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Decode Keystore
+        # Guardamos el archivo .jks directamente en la carpeta android/app/
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Create key.properties
+        # La ruta 'upload-keystore.jks' es relativa a la carpeta 'app', por eso quitamos el 'app/' anterior
+        run: |
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK (Optimized)
+        # Esto generará los APKs ligeros que buscamos
+        run: flutter build apk --release --split-per-abi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apks
+          # Esto subirá los 3 archivos (v7, v8 y x64) para que elijas el más liviano
+          path: build/app/outputs/flutter-apk/app-*-release.apk

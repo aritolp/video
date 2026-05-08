@@ -5,24 +5,24 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    
 }
 
+// Carga de propiedades de la llave
 val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
+// CAMBIO CLAVE: Buscamos el archivo en la carpeta 'android' (donde lo crea GitHub)
+val keystorePropertiesFile = rootProject.file("key.properties") 
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
-    namespace = "com.example.tvplus"
+    namespace = "com.prueba.tvplus"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        
     }
 
     kotlinOptions {
@@ -30,9 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.tvplus"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        applicationId = "com.prueba.tvplus"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -41,16 +39,15 @@ android {
 
     signingConfigs {
         create("release") {
-            if (System.getenv("CI") != null) { // CI=true is exported by Codemagic
-                storeFile = file(System.getenv("CM_BUILD_DIR") + "/codemagic.keystore")
-                storePassword = System.getenv("CM_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("CM_KEY_ALIAS")
-                keyPassword = System.getenv("CM_KEY_PASSWORD")
-            } else {
-                keyAlias = keystoreProperties["keyAlias"] as String?
-                keyPassword = keystoreProperties["keyPassword"] as String?
-                storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
-                storePassword = keystoreProperties["storePassword"] as String?
+            // Simplificado para usar siempre key.properties (más robusto para GitHub)
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storePassword = keystoreProperties["storePassword"] as String?
+            
+            val storePath = keystoreProperties["storeFile"] as String?
+            if (storePath != null) {
+                // Esto permite que el archivo esté en android/app/ como lo pone tu YAML
+                storeFile = file(storePath)
             }
         }
     }
@@ -58,14 +55,14 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            // Opcional: añade esto para reducir el peso eliminando código no usado
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    
 }
