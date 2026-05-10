@@ -29,7 +29,7 @@ class WebVideoPlayer extends StatefulWidget {
 
 @NowaGenerated()
 class _WebVideoPlayerState extends State<WebVideoPlayer> {
-  webview.InAppWebViewController? webViewPlayerController;
+  webview.InAppWebViewController? controller;
 
   @override
   void didUpdateWidget(WebVideoPlayer oldWidget) {
@@ -40,10 +40,11 @@ class _WebVideoPlayerState extends State<WebVideoPlayer> {
   }
 
   void _applyMuteStatus() {
-    if (webViewPlayerController != null) {
+    final ctrl = controller;
+    if (ctrl != null) {
       final String muteScript =
           '        (function() {\n          var videos = document.getElementsByTagName("video");\n          for (var i = 0; i < videos.length; i++) {\n            videos[i].muted = ${widget.isMuted};\n          }\n        })();\n      ';
-      webViewPlayerController.evaluateJavascript(source: muteScript);
+      ctrl.evaluateJavascript(source: muteScript);
     }
   }
 
@@ -74,15 +75,17 @@ class _WebVideoPlayerState extends State<WebVideoPlayer> {
         disableVerticalScroll: true,
         disableHorizontalScroll: true,
       ),
-      onWebViewCreated: (ctrl) {
-        webViewPlayerController = ctrl;
+      onWebViewCreated: (webviewController) {
+        setState(() {
+          controller = webviewController;
+        });
       },
-      onLoadStop: (ctrl, url) async {
+      onLoadStop: (webviewController, url) async {
         final String setupScript =
             '(function() {\n            var style = document.createElement("style");\n            style.innerHTML = "video { width: 100% !important; height: 100% !important; object-fit: contain !important; background: black !important; } body { margin: 0; padding: 0; background: black !important; overflow: hidden !important; } .logo, .channel-logo, #logo, [class*=\'logo\'], [id*=\'logo\'] { display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }";\n            document.head.appendChild(style);\n            \n            function forcePlayAndFix() {\n              var videos = document.getElementsByTagName("video");\n              for (var i = 0; i < videos.length; i++) {\n                var v = videos[i];\n                v.muted = ${widget.isMuted};\n                if (v.paused) {\n                  v.play().catch(function(e) {});\n                }\n                v.onpause = function(e) {\n                  if (v.paused) v.play().catch(function(e) {});\n                };\n              }\n              var overlays = document.querySelectorAll("div[class*=\'overlay\'], div[id*=\'overlay\'], div[class*=\'popup\']");\n              for (var i = 0; i < overlays.length; i++) {\n                overlays[i].style.display = "none";\n              }\n            }\n            setInterval(forcePlayAndFix, 1000);\n          })();';
-        await ctrl.evaluateJavascript(source: setupScript);
+        await webviewController.evaluateJavascript(source: setupScript);
       },
-      onCreateWindow: (ctrl, createWindowAction) async => false,
+      onCreateWindow: (webviewController, createWindowAction) async => false,
     );
   }
 }
