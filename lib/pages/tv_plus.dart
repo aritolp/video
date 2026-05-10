@@ -41,9 +41,36 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
 
   bool _isFullScreen = false;
 
+  final FocusNode _playerNode = FocusNode();
+
+  final FocusNode _channelsTabNode = FocusNode();
+
+  final FocusNode _favoritesTabNode = FocusNode();
+
+  final FocusNode _aboutTabNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _channelsFuture = SupabaseService().getAllCanales();
+    _loadPreferences();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    _playerNode.addListener(() => setState(() {}));
+    _channelsTabNode.addListener(() => setState(() {}));
+    _favoritesTabNode.addListener(() => setState(() {}));
+    _aboutTabNode.addListener(() => setState(() {}));
+  }
+
   @override
   void dispose() {
     _pulseController.dispose();
+    _playerNode.dispose();
+    _channelsTabNode.dispose();
+    _favoritesTabNode.dispose();
+    _aboutTabNode.dispose();
     super.dispose();
   }
 
@@ -68,17 +95,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
       playerMessage = 'Recargando...';
       _refreshCount++;
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _channelsFuture = SupabaseService().getAllCanales();
-    _loadPreferences();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
   }
 
   void _onChannelSelected(listaDeCanales channel) {
@@ -288,6 +304,43 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _toggleFullScreen() async {
+    if (!_isFullScreen) {
+      final bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.grey[900],
+          title: const Text(
+            'Pantalla completa',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: const Text(
+            '¿Deseas ver el canal en pantalla completa?',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCELAR'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                'PANTALLA COMPLETA',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        setState(() => _isFullScreen = true);
+      }
+    } else {
+      setState(() => _isFullScreen = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = AppState.of(context);
@@ -398,32 +451,58 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                           currentChannel.logo!.isNotEmpty)
                       ? currentChannel.logo
                       : null;
-                  final playerWidget = GestureDetector(
-                    onTap: () => setState(() => _isFullScreen = !_isFullScreen),
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Container(
+                  final playerWidget = Focus(
+                    focusNode: _playerNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          (event.logicalKey == LogicalKeyboardKey.enter ||
+                              event.logicalKey == LogicalKeyboardKey.select)) {
+                        _toggleFullScreen();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: GestureDetector(
+                      onTap: _toggleFullScreen,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: _playerNode.hasFocus
+                            ? const EdgeInsets.all(4.0)
+                            : EdgeInsets.zero,
                         decoration: BoxDecoration(
-                          color: Colors.black,
+                          color: _playerNode.hasFocus
+                              ? Colors.red
+                              : Colors.transparent,
                           borderRadius: (_isFullScreen || isLandscape)
                               ? BorderRadius.zero
-                              : BorderRadius.circular(16.0),
+                              : BorderRadius.circular(20.0),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child: HlsVideoPlayer(
-                          key: ValueKey('${streamUrl}_${_refreshCount}'),
-                          url: streamUrl,
-                          logoUrl: logoUrl,
-                          userAgent: currentChannel.userAgent,
-                          referer: currentChannel.referer,
-                          onStatusChanged: (status, message) {
-                            if (mounted) {
-                              setState(() {
-                                playerStatus = status;
-                                playerMessage = message;
-                              });
-                            }
-                          },
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: (_isFullScreen || isLandscape)
+                                  ? BorderRadius.zero
+                                  : BorderRadius.circular(16.0),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: HlsVideoPlayer(
+                              key: ValueKey('${streamUrl}_${_refreshCount}'),
+                              url: streamUrl,
+                              logoUrl: logoUrl,
+                              userAgent: currentChannel.userAgent,
+                              referer: currentChannel.referer,
+                              onStatusChanged: (status, message) {
+                                if (mounted) {
+                                  setState(() {
+                                    playerStatus = status;
+                                    playerMessage = message;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -436,28 +515,29 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                       child: Center(child: playerWidget),
                     );
                   }
-                  final bool isFavorite = (appState.favoriteChannels ?? [])
-                      .contains(currentChannel.id);
                   return LayoutBuilder(
                     builder: (context, constraints) {
-                      if (constraints.maxWidth > 600) {
+                      if (constraints.maxWidth > 700) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               flex: 3,
-                              child: Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: playerWidget,
-                                  ),
-                                  _buildChannelInfo(
-                                    currentChannel,
-                                    favoriteColor,
-                                    isFavorite,
-                                  ),
-                                ],
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: playerWidget,
+                                    ),
+                                    _buildChannelInfo(
+                                      currentChannel,
+                                      favoriteColor,
+                                      (appState.favoriteChannels ?? [])
+                                          .contains(currentChannel.id),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                             Expanded(
@@ -484,7 +564,9 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                             _buildChannelInfo(
                               currentChannel,
                               favoriteColor,
-                              isFavorite,
+                              (appState.favoriteChannels ?? []).contains(
+                                currentChannel.id,
+                              ),
                             ),
                             const SizedBox(height: 24.0),
                             Expanded(
@@ -637,49 +719,23 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              GestureDetector(
-                onTap: () => appState.setShowingAbout(false),
-                child: Text(
-                  'CANALES',
-                  style: TextStyle(
-                    color:
-                        (!appState.isShowingFavorites &&
-                            !appState.isShowingAbout)
-                        ? Colors.white
-                        : Colors.white38,
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
+              _buildTabButton(
+                'CANALES',
+                (!appState.isShowingFavorites && !appState.isShowingAbout),
+                _channelsTabNode,
+                () => appState.setShowingAbout(false),
               ),
-              GestureDetector(
-                onTap: () => appState.setShowingFavorites(true),
-                child: Text(
-                  'FAVORITOS',
-                  style: TextStyle(
-                    color: appState.isShowingFavorites
-                        ? favoriteColor
-                        : Colors.white38,
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
+              _buildTabButton(
+                'FAVORITOS',
+                appState.isShowingFavorites,
+                _favoritesTabNode,
+                () => appState.setShowingFavorites(true),
               ),
-              GestureDetector(
-                onTap: () => appState.setShowingAbout(true),
-                child: Text(
-                  'acerca de..',
-                  style: TextStyle(
-                    color: appState.isShowingAbout
-                        ? Colors.white
-                        : Colors.white38,
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+              _buildTabButton(
+                'ACERCA DE..',
+                appState.isShowingAbout,
+                _aboutTabNode,
+                () => appState.setShowingAbout(true),
               ),
             ],
           ),
@@ -717,6 +773,55 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildTabButton(
+    String label,
+    bool isSelected,
+    FocusNode node,
+    void Function() onTap,
+  ) {
+    final bool hasFocus = node.hasFocus;
+    return Focus(
+      focusNode: node,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            color: hasFocus
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10.0),
+            border: Border.all(
+              color: hasFocus ? Colors.red : Colors.transparent,
+              width: 2.0,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.red
+                  : (hasFocus ? Colors.white : Colors.white38),
+              fontSize: 14.0,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

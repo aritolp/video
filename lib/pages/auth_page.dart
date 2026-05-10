@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
-import 'package:flutter/services.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 @NowaGenerated()
 class AuthPage extends StatefulWidget {
@@ -41,6 +41,22 @@ class _AuthPageState extends State<AuthPage> {
 
   final FocusNode _submitNode = FocusNode();
 
+  final FocusNode _toggleCodeNode = FocusNode();
+
+  final FocusNode _toggleModeNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _emailNode.addListener(() => setState(() {}));
+    _passwordNode.addListener(() => setState(() {}));
+    _nombreNode.addListener(() => setState(() {}));
+    _codeNode.addListener(() => setState(() {}));
+    _submitNode.addListener(() => setState(() {}));
+    _toggleCodeNode.addListener(() => setState(() {}));
+    _toggleModeNode.addListener(() => setState(() {}));
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -52,6 +68,8 @@ class _AuthPageState extends State<AuthPage> {
     _nombreNode.dispose();
     _codeNode.dispose();
     _submitNode.dispose();
+    _toggleCodeNode.dispose();
+    _toggleModeNode.dispose();
     super.dispose();
   }
 
@@ -63,57 +81,50 @@ class _AuthPageState extends State<AuthPage> {
     FocusNode? focusNode,
     FocusNode? nextNode,
   }) {
-    return Focus(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
+    final bool hasFocus = focusNode?.hasFocus ?? false;
+    return Container(
+      decoration: BoxDecoration(
+        color: hasFocus
+            ? Colors.red.withValues(alpha: 0.1)
+            : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(
+          color: hasFocus ? Colors.red : Colors.white10,
+          width: hasFocus ? 2.5 : 1.0,
+        ),
+        boxShadow: [
+          if (hasFocus)
+            BoxShadow(
+              color: Colors.red.withValues(alpha: 0.2),
+              blurRadius: 10.0,
+              spreadRadius: 1.0,
+            ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: isPassword,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: hasFocus ? Colors.white : Colors.white38,
+          ),
+          prefixIcon: Icon(icon, color: hasFocus ? Colors.red : Colors.white38),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20.0,
+            vertical: 16.0,
+          ),
+        ),
+        onSubmitted: (_) {
           if (nextNode != null) {
             nextNode.requestFocus();
           } else {
             _handleAuth();
           }
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(
-            color: (focusNode?.hasFocus ?? false) ? Colors.red : Colors.white10,
-            width: (focusNode?.hasFocus ?? false) ? 2.0 : 1.0,
-          ),
-        ),
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          obscureText: isPassword,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: const TextStyle(color: Colors.white38),
-            prefixIcon: Icon(
-              icon,
-              color: (focusNode?.hasFocus ?? false)
-                  ? Colors.red
-                  : Colors.white38,
-            ),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20.0,
-              vertical: 16.0,
-            ),
-          ),
-          onSubmitted: (_) {
-            if (nextNode != null) {
-              nextNode.requestFocus();
-            } else {
-              _handleAuth();
-            }
-          },
-        ),
+        },
       ),
     );
   }
@@ -272,57 +283,119 @@ class _AuthPageState extends State<AuthPage> {
                       ),
                     ],
                     const SizedBox(height: 32.0),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56.0,
-                      child: ElevatedButton(
-                        focusNode: _submitNode,
-                        onPressed: _isLoading ? null : _handleAuth,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0),
-                          ),
-                          elevation: 0.0,
-                        ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : Text(
-                                _useCode
-                                    ? 'Validar Código'
-                                    : (_isLogin ? 'Entrar' : 'Registrarse'),
-                                style: const TextStyle(
-                                  fontSize: 16.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    Focus(
+                      focusNode: _submitNode,
+                      onKeyEvent: (node, event) {
+                        if (event is KeyDownEvent &&
+                            (event.logicalKey == LogicalKeyboardKey.enter ||
+                                event.logicalKey ==
+                                    LogicalKeyboardKey.select)) {
+                          _handleAuth();
+                          return KeyEventResult.handled;
+                        }
+                        return KeyEventResult.ignored;
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: double.infinity,
+                        height: 56.0,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16.0),
+                          boxShadow: [
+                            if (_submitNode.hasFocus)
+                              BoxShadow(
+                                color: Colors.red.withValues(alpha: 0.4),
+                                blurRadius: 15.0,
+                                spreadRadius: 2.0,
                               ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _handleAuth,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            side: BorderSide(
+                              color: _submitNode.hasFocus
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              width: 2.0,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0),
+                            ),
+                            elevation: 0.0,
+                          ),
+                          child: _isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : Text(
+                                  _useCode
+                                      ? 'Validar Código'
+                                      : (_isLogin ? 'Entrar' : 'Registrarse'),
+                                  style: const TextStyle(
+                                    fontSize: 16.0,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24.0),
-                    TextButton(
-                      onPressed: () => setState(() {
-                        _useCode = !_useCode;
-                      }),
-                      child: Text(
-                        _useCode
-                            ? 'Volver a Email/Password'
-                            : '¿Tienes un código de acceso?',
-                        style: const TextStyle(color: Colors.white54),
+                    Focus(
+                      focusNode: _toggleCodeNode,
+                      child: TextButton(
+                        onPressed: () => setState(() {
+                          _useCode = !_useCode;
+                        }),
+                        style: TextButton.styleFrom(
+                          side: BorderSide(
+                            color: _toggleCodeNode.hasFocus
+                                ? Colors.white38
+                                : Colors.transparent,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                        ),
+                        child: Text(
+                          _useCode
+                              ? 'Volver a Email/Password'
+                              : '¿Tienes un código de acceso?',
+                          style: TextStyle(
+                            color: _toggleCodeNode.hasFocus
+                                ? Colors.white
+                                : Colors.white54,
+                          ),
+                        ),
                       ),
                     ),
                     if (!_useCode)
-                      TextButton(
-                        onPressed: () => setState(() => _isLogin = !_isLogin),
-                        child: Text(
-                          _isLogin
-                              ? '¿No tienes cuenta? Regístrate'
-                              : '¿Ya tienes cuenta? Inicia sesión',
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 12.0,
+                      Focus(
+                        focusNode: _toggleModeNode,
+                        child: TextButton(
+                          onPressed: () => setState(() => _isLogin = !_isLogin),
+                          style: TextButton.styleFrom(
+                            side: BorderSide(
+                              color: _toggleModeNode.hasFocus
+                                  ? Colors.white10
+                                  : Colors.transparent,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                          child: Text(
+                            _isLogin
+                                ? '¿No tienes cuenta? Regístrate'
+                                : '¿Ya tienes cuenta? Inicia sesión',
+                            style: TextStyle(
+                              color: _toggleModeNode.hasFocus
+                                  ? Colors.white
+                                  : Colors.white38,
+                              fontSize: 12.0,
+                            ),
                           ),
                         ),
                       ),
