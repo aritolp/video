@@ -6,9 +6,11 @@ import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:tvplus/globals/app_state.dart';
 import 'package:tvplus/main.dart';
 import 'package:flutter/services.dart';
+import 'package:tvplus/components/category_chip.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tvplus/components/hls_video_player.dart';
+import 'package:tvplus/components/channel_card.dart';
 
 @NowaGenerated()
 class TvPlus extends StatefulWidget {
@@ -115,44 +117,22 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
         .toList();
     categories.sort();
     return Container(
-      height: 40,
+      height: 45.0,
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
         scrollDirection: Axis.horizontal,
         itemCount: categories.length + 1,
-        separatorBuilder: (context, index) => const SizedBox(width: 10),
+        separatorBuilder: (context, index) => const SizedBox(width: 12.0),
         itemBuilder: (context, index) {
           final isAll = index == 0;
           final category = isAll ? null : categories[index - 1];
           final isSelected = appState.selectedCategory == category;
-          return ChoiceChip(
-            label: Text(
-              isAll ? 'TODOS' : category!.toUpperCase(),
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white60,
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                letterSpacing: 0.5,
-              ),
-            ),
-            selected: isSelected,
+          return CategoryChip(
+            label: isAll ? 'TODOS' : category!,
+            isSelected: isSelected,
             onSelected: (selected) {
               appState.setSelectedCategory(selected ? category : null);
             },
-            selectedColor: Colors.red.withValues(alpha: 0.7),
-            backgroundColor: Colors.black.withValues(alpha: 0.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isSelected
-                    ? Colors.red.withValues(alpha: 0.5)
-                    : Colors.white.withValues(alpha: 0.1),
-                width: 1,
-              ),
-            ),
-            showCheckmark: false,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           );
         },
       ),
@@ -164,7 +144,9 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
         title: const Text(
           'Cerrar sesión',
           style: TextStyle(color: Colors.white),
@@ -222,49 +204,49 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
       return const Center(child: CircularProgressIndicator(color: Colors.red));
     }
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 100,
-            height: 100,
+            width: 100.0,
+            height: 100.0,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(24.0),
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
-            child: const Icon(Icons.tv, size: 50, color: Colors.white),
+            child: const Icon(Icons.tv, size: 50.0, color: Colors.white),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 32.0),
           Text(
             info.nombreApp,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 28,
+              fontSize: 28.0,
               fontWeight: FontWeight.w600,
               letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 8.0),
           Text(
             'Versión ${info.version}',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 14,
+              fontSize: 14.0,
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 48),
+          const SizedBox(height: 48.0),
           _buildInfoRow('Soporte', info.correo),
-          const SizedBox(height: 16),
+          const SizedBox(height: 16.0),
           _buildInfoRow('Sitio Web', info.sitioWeb),
           const Spacer(),
           Text(
             'Diseñado con minimalismo en mente',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.2),
-              fontSize: 12,
+              fontSize: 12.0,
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -275,10 +257,10 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
 
   Widget _buildInfoRow(String label, String value) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.0),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
@@ -288,14 +270,14 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
             label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 15,
+              fontSize: 15.0,
             ),
           ),
           Text(
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 15,
+              fontSize: 15.0,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -312,424 +294,376 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
       builder: (context, orientation) {
         final bool isLandscape = orientation == Orientation.landscape;
         _handleSystemUI(isLandscape);
-        return Scaffold(
-          backgroundColor: Colors.black,
-          body: SafeArea(
-            top: !isLandscape,
-            bottom: !isLandscape,
-            left: !isLandscape,
-            right: !isLandscape,
-            child: DataBuilder<List<listaDeCanales>>(
-              future: _channelsFuture,
-              builder: (context, channels) {
-                if (channels == null || channels.isEmpty) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        CircularProgressIndicator(color: Colors.red),
-                        SizedBox(height: 16),
-                        Text(
-                          'Cargando canales...',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                List<listaDeCanales> filteredChannels;
-                if (appState.isShowingFavorites) {
-                  final favIds = appState.favoriteChannels ?? [];
-                  filteredChannels = channels
-                      .where((c) => favIds.contains(c.id))
-                      .toList();
-                } else if (appState.selectedCategory != null) {
-                  filteredChannels = channels
-                      .where(
-                        (c) =>
-                            (c.categoria ?? 'General').toLowerCase() ==
-                            appState.selectedCategory?.toLowerCase(),
-                      )
-                      .toList();
-                } else {
-                  filteredChannels = channels;
-                }
-                final currentChannel = channels.firstWhere(
-                  (c) => c.id == appState.selectedChannelId,
-                  orElse: () => channels[0],
-                );
-                final String? rawUrl = currentChannel.url_stream;
-                final String streamUrl = (rawUrl != null && rawUrl!.isNotEmpty)
-                    ? rawUrl!
-                    : 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8';
-                final String? logoUrl =
-                    (currentChannel.logo != null &&
-                        currentChannel.logo!.isNotEmpty)
-                    ? currentChannel.logo
-                    : null;
-                final playerWidget = AspectRatio(
-                  aspectRatio: 16 / 9,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: isLandscape
-                          ? BorderRadius.zero
-                          : BorderRadius.circular(16),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: HlsVideoPlayer(
-                      key: ValueKey('${streamUrl}_${_refreshCount}'),
-                      url: streamUrl,
-                      logoUrl: logoUrl,
-                      userAgent: currentChannel.userAgent,
-                      referer: currentChannel.referer,
-                      onStatusChanged: (status, message) {
-                        if (mounted) {
-                          setState(() {
-                            playerStatus = status;
-                            playerMessage = message;
-                          });
-                        }
-                      },
-                    ),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) {
+              return;
+            }
+            if (appState.isShowingAbout || appState.isShowingFavorites) {
+              appState.setShowingAbout(false);
+              appState.setShowingFavorites(false);
+            } else if (isLandscape) {
+              SystemChrome.setPreferredOrientations([
+                DeviceOrientation.portraitUp,
+              ]);
+            } else {
+              final bool? confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: Colors.grey[900],
+                  title: const Text(
+                    'Salir',
+                    style: TextStyle(color: Colors.white),
                   ),
-                );
-                if (isLandscape) {
-                  return Container(
-                    color: Colors.black,
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: Center(child: playerWidget),
-                  );
-                }
-                final bool isFavorite = (appState.favoriteChannels ?? [])
-                    .contains(currentChannel.id);
-                return LayoutBuilder(
-                  builder: (context, constraints) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: playerWidget,
+                  content: const Text(
+                    '¿Quieres salir de la aplicación?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('NO'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        'SÍ',
+                        style: TextStyle(color: Colors.red),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    currentChannel.nombre ?? 'Canal sin nombre',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                SystemNavigator.pop();
+              }
+            }
+          },
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: SafeArea(
+              top: !isLandscape,
+              bottom: !isLandscape,
+              left: !isLandscape,
+              right: !isLandscape,
+              child: DataBuilder<List<listaDeCanales>>(
+                future: _channelsFuture,
+                builder: (context, channels) {
+                  if (channels == null || channels.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          CircularProgressIndicator(color: Colors.red),
+                          SizedBox(height: 16.0),
+                          Text(
+                            'Cargando canales...',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  List<listaDeCanales> filteredChannels;
+                  if (appState.isShowingFavorites) {
+                    final favIds = appState.favoriteChannels ?? [];
+                    filteredChannels = channels
+                        .where((c) => favIds.contains(c.id))
+                        .toList();
+                  } else if (appState.selectedCategory != null) {
+                    filteredChannels = channels
+                        .where(
+                          (c) =>
+                              (c.categoria ?? 'General').toLowerCase() ==
+                              appState.selectedCategory?.toLowerCase(),
+                        )
+                        .toList();
+                  } else {
+                    filteredChannels = channels;
+                  }
+                  final currentChannel = channels.firstWhere(
+                    (c) => c.id == appState.selectedChannelId,
+                    orElse: () => channels[0],
+                  );
+                  final String? rawUrl = currentChannel.url_stream;
+                  final String streamUrl =
+                      (rawUrl != null && rawUrl!.isNotEmpty)
+                      ? rawUrl!
+                      : 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8';
+                  final String? logoUrl =
+                      (currentChannel.logo != null &&
+                          currentChannel.logo!.isNotEmpty)
+                      ? currentChannel.logo
+                      : null;
+                  final playerWidget = AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: isLandscape
+                            ? BorderRadius.zero
+                            : BorderRadius.circular(16.0),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: HlsVideoPlayer(
+                        key: ValueKey('${streamUrl}_${_refreshCount}'),
+                        url: streamUrl,
+                        logoUrl: logoUrl,
+                        userAgent: currentChannel.userAgent,
+                        referer: currentChannel.referer,
+                        onStatusChanged: (status, message) {
+                          if (mounted) {
+                            setState(() {
+                              playerStatus = status;
+                              playerMessage = message;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                  if (isLandscape) {
+                    return Container(
+                      color: Colors.black,
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: Center(child: playerWidget),
+                    );
+                  }
+                  final bool isFavorite = (appState.favoriteChannels ?? [])
+                      .contains(currentChannel.id);
+                  return LayoutBuilder(
+                    builder: (context, constraints) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: playerWidget,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            20.0,
+                            20.0,
+                            20.0,
+                            0.0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      currentChannel.nombre ??
+                                          'Canal sin nombre',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 22.0,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          'Señal: ${currentChannel.categoria ?? 'En vivo'}',
-                                          style: const TextStyle(
-                                            color: Colors.white38,
-                                            fontSize: 11,
+                                    const SizedBox(height: 4.0),
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'Señal: ${currentChannel.categoria ?? 'En vivo'}',
+                                            style: const TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 11.0,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      FadeTransition(
-                                        opacity:
-                                            playerStatus ==
-                                                PlayerStatus.connecting
-                                            ? _pulseController
-                                            : const AlwaysStoppedAnimation(1),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: _getBadgeColor().withValues(
-                                              alpha: 0.2,
+                                        const SizedBox(width: 12.0),
+                                        FadeTransition(
+                                          opacity:
+                                              playerStatus ==
+                                                  PlayerStatus.connecting
+                                              ? _pulseController
+                                              : const AlwaysStoppedAnimation(1),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8.0,
+                                              vertical: 3.0,
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                            border: Border.all(
+                                            decoration: BoxDecoration(
                                               color: _getBadgeColor()
-                                                  .withValues(alpha: 0.5),
-                                              width: 1,
+                                                  .withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(4.0),
+                                              border: Border.all(
+                                                color: _getBadgeColor()
+                                                    .withValues(alpha: 0.5),
+                                                width: 1.0,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  width: 6.0,
+                                                  height: 6.0,
+                                                  decoration: BoxDecoration(
+                                                    color: _getBadgeColor(),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6.0),
+                                                Flexible(
+                                                  child: Text(
+                                                    playerMessage.toUpperCase(),
+                                                    style: TextStyle(
+                                                      color: _getBadgeColor(),
+                                                      fontSize: 9.0,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      letterSpacing: 0.5,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(
-                                                width: 6,
-                                                height: 6,
-                                                decoration: BoxDecoration(
-                                                  color: _getBadgeColor(),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Flexible(
-                                                child: Text(
-                                                  playerMessage.toUpperCase(),
-                                                  style: TextStyle(
-                                                    color: _getBadgeColor(),
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
-                                                    letterSpacing: 0.5,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    onPressed: () =>
+                                        _toggleFavorite(currentChannel.id ?? 0),
+                                    icon: Icon(
+                                      isFavorite
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color: isFavorite
+                                          ? favoriteColor
+                                          : Colors.white38,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _refreshChannels,
+                                    icon: const Icon(
+                                      Icons.refresh,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _logout,
+                                    icon: const Icon(
+                                      Icons.logout,
+                                      color: Colors.white54,
+                                    ),
                                   ),
                                 ],
                               ),
-                            ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () =>
-                                      _toggleFavorite(currentChannel.id ?? 0),
-                                  icon: Icon(
-                                    isFavorite
-                                        ? Icons.favorite
-                                        : Icons.favorite_border,
-                                    color: isFavorite
-                                        ? favoriteColor
-                                        : Colors.white38,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: _refreshChannels,
-                                  icon: const Icon(
-                                    Icons.refresh,
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: _logout,
-                                  icon: const Icon(
-                                    Icons.logout,
-                                    color: Colors.white54,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            GestureDetector(
-                              onTap: () => appState.setShowingAbout(false),
-                              child: Text(
-                                'CANALES',
-                                style: TextStyle(
-                                  color:
-                                      (!appState.isShowingFavorites &&
-                                          !appState.isShowingAbout)
-                                      ? Colors.white
-                                      : Colors.white38,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => appState.setShowingFavorites(true),
-                              child: Text(
-                                'FAVORITOS',
-                                style: TextStyle(
-                                  color: appState.isShowingFavorites
-                                      ? favoriteColor
-                                      : Colors.white38,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () => appState.setShowingAbout(true),
-                              child: Text(
-                                'acerca de..',
-                                style: TextStyle(
-                                  color: appState.isShowingAbout
-                                      ? Colors.white
-                                      : Colors.white38,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (appState.isShowingAbout)
-                        Expanded(child: _buildAboutSection(appState))
-                      else ...[
-                        _buildCategoryFilters(channels, appState),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: GridView.builder(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  childAspectRatio: 1.5,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                ),
-                            itemCount: filteredChannels.length,
-                            itemBuilder: (context, index) {
-                              final channel = filteredChannels[index];
-                              final isSelected =
-                                  currentChannel.id == channel.id;
-                              final String channelLogo =
-                                  (channel.logo != null &&
-                                      channel.logo!.isNotEmpty)
-                                  ? channel.logo!
-                                  : 'https://images.unsplash.com/photo-1594908900066-3f47337549d8?w=400';
-                              return Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => _onChannelSelected(channel),
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeInOut,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        if (isSelected)
-                                          BoxShadow(
-                                            color: Colors.red.withValues(
-                                              alpha: 0.3,
-                                            ),
-                                            blurRadius: 12,
-                                            spreadRadius: 2,
-                                          ),
-                                      ],
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? Colors.red
-                                            : Colors.white.withValues(
-                                                alpha: 0.1,
-                                              ),
-                                        width: isSelected ? 2 : 1,
-                                      ),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: Stack(
-                                        children: [
-                                          Positioned.fill(
-                                            child: Image.network(
-                                              channelLogo,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => Container(
-                                                    color: Colors.white10,
-                                                    child: const Icon(
-                                                      Icons.tv,
-                                                      color: Colors.white24,
-                                                    ),
-                                                  ),
-                                            ),
-                                          ),
-                                          Positioned.fill(
-                                            child: AnimatedContainer(
-                                              duration: const Duration(
-                                                milliseconds: 300,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topCenter,
-                                                  end: Alignment.bottomCenter,
-                                                  colors: [
-                                                    Colors.black.withValues(
-                                                      alpha: 0.1,
-                                                    ),
-                                                    isSelected
-                                                        ? Colors.red.withValues(
-                                                            alpha: 0.8,
-                                                          )
-                                                        : Colors.black
-                                                              .withValues(
-                                                                alpha: 0.7,
-                                                              ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            bottom: 12,
-                                            left: 12,
-                                            right: 12,
-                                            child: Text(
-                                              channel.nombre ?? 'Canal',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 13,
-                                                fontWeight: isSelected
-                                                    ? FontWeight.bold
-                                                    : FontWeight.w500,
-                                                letterSpacing: 0.3,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
+                            ],
                           ),
                         ),
+                        const SizedBox(height: 24.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              GestureDetector(
+                                onTap: () => appState.setShowingAbout(false),
+                                child: Text(
+                                  'CANALES',
+                                  style: TextStyle(
+                                    color:
+                                        (!appState.isShowingFavorites &&
+                                            !appState.isShowingAbout)
+                                        ? Colors.white
+                                        : Colors.white38,
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => appState.setShowingFavorites(true),
+                                child: Text(
+                                  'FAVORITOS',
+                                  style: TextStyle(
+                                    color: appState.isShowingFavorites
+                                        ? favoriteColor
+                                        : Colors.white38,
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => appState.setShowingAbout(true),
+                                child: Text(
+                                  'acerca de..',
+                                  style: TextStyle(
+                                    color: appState.isShowingAbout
+                                        ? Colors.white
+                                        : Colors.white38,
+                                    fontSize: 14.0,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12.0),
+                        if (appState.isShowingAbout)
+                          Expanded(child: _buildAboutSection(appState))
+                        else ...[
+                          _buildCategoryFilters(channels, appState),
+                          const SizedBox(height: 8.0),
+                          Expanded(
+                            child: GridView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20.0,
+                                vertical: 10.0,
+                              ),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    childAspectRatio: 1.5,
+                                    crossAxisSpacing: 16.0,
+                                    mainAxisSpacing: 16.0,
+                                  ),
+                              itemCount: filteredChannels.length,
+                              itemBuilder: (context, index) {
+                                final channel = filteredChannels[index];
+                                final isSelected =
+                                    currentChannel.id == channel.id;
+                                return ChannelCard(
+                                  channel: channel,
+                                  isCurrentlyPlaying: isSelected,
+                                  onTap: () => _onChannelSelected(channel),
+                                  autofocus: index == 0,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                );
-              },
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         );

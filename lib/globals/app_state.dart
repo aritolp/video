@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:tvplus/globals/themes.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:tvplus/models/lista_de_canales.dart';
+import 'package:tvplus/models/app_info.dart';
 import 'package:tvplus/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
-import 'package:tvplus/models/app_info.dart';
 import 'package:provider/provider.dart';
 
 @NowaGenerated()
