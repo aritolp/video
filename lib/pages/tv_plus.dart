@@ -9,8 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:tvplus/components/category_chip.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tvplus/components/hls_video_player.dart';
 import 'package:tvplus/components/channel_card.dart';
+import 'package:tvplus/components/hls_video_player.dart';
 
 @NowaGenerated()
 class TvPlus extends StatefulWidget {
@@ -49,30 +49,11 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
 
   final FocusNode _aboutTabNode = FocusNode();
 
-  @override
-  void initState() {
-    super.initState();
-    _channelsFuture = SupabaseService().getAllCanales();
-    _loadPreferences();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-    _playerNode.addListener(() => setState(() {}));
-    _channelsTabNode.addListener(() => setState(() {}));
-    _favoritesTabNode.addListener(() => setState(() {}));
-    _aboutTabNode.addListener(() => setState(() {}));
-  }
+  final FocusNode _favBtnNode = FocusNode();
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    _playerNode.dispose();
-    _channelsTabNode.dispose();
-    _favoritesTabNode.dispose();
-    _aboutTabNode.dispose();
-    super.dispose();
-  }
+  final FocusNode _refreshBtnNode = FocusNode();
+
+  final FocusNode _logoutBtnNode = FocusNode();
 
   Color _getBadgeColor() {
     switch (playerStatus) {
@@ -341,6 +322,313 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     }
   }
 
+  Widget _buildListSection(
+    AppState appState,
+    List<listaDeCanales> channels,
+    List<listaDeCanales> filteredChannels,
+    listaDeCanales currentChannel,
+  ) {
+    final favoriteColor = Colors.red.withValues(alpha: 0.7);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildTabButton(
+                'CANALES',
+                (!appState.isShowingFavorites && !appState.isShowingAbout),
+                _channelsTabNode,
+                () => appState.setShowingAbout(false),
+              ),
+              _buildTabButton(
+                'FAVORITOS',
+                appState.isShowingFavorites,
+                _favoritesTabNode,
+                () => appState.setShowingFavorites(true),
+              ),
+              _buildTabButton(
+                'ACERCA DE..',
+                appState.isShowingAbout,
+                _aboutTabNode,
+                () => appState.setShowingAbout(true),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        if (appState.isShowingAbout)
+          Expanded(child: _buildAboutSection(appState))
+        else ...[
+          _buildCategoryFilters(channels, appState),
+          const SizedBox(height: 8.0),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 10.0,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1.5,
+                crossAxisSpacing: 16.0,
+                mainAxisSpacing: 16.0,
+              ),
+              itemCount: filteredChannels.length,
+              itemBuilder: (context, index) {
+                final channel = filteredChannels[index];
+                final isSelected = currentChannel.id == channel.id;
+                return ChannelCard(
+                  channel: channel,
+                  isCurrentlyPlaying: isSelected,
+                  onTap: () => _onChannelSelected(channel),
+                  autofocus: index == 0,
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTabButton(
+    String label,
+    bool isSelected,
+    FocusNode node,
+    void Function() onTap,
+  ) {
+    final bool hasFocus = node.hasFocus;
+    return Focus(
+      focusNode: node,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          onTap();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            color: hasFocus
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10.0),
+            border: Border.all(
+              color: hasFocus ? Colors.red : Colors.transparent,
+              width: 2.0,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected
+                  ? Colors.red
+                  : (hasFocus ? Colors.white : Colors.white38),
+              fontSize: 14.0,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _channelsFuture = SupabaseService().getAllCanales();
+    _loadPreferences();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    _playerNode.addListener(() => setState(() {}));
+    _channelsTabNode.addListener(() => setState(() {}));
+    _favoritesTabNode.addListener(() => setState(() {}));
+    _aboutTabNode.addListener(() => setState(() {}));
+    _favBtnNode.addListener(() => setState(() {}));
+    _refreshBtnNode.addListener(() => setState(() {}));
+    _logoutBtnNode.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _playerNode.dispose();
+    _channelsTabNode.dispose();
+    _favoritesTabNode.dispose();
+    _aboutTabNode.dispose();
+    _favBtnNode.dispose();
+    _refreshBtnNode.dispose();
+    _logoutBtnNode.dispose();
+    super.dispose();
+  }
+
+  Widget _buildChannelInfo(
+    listaDeCanales currentChannel,
+    Color favoriteColor,
+    bool isFavorite,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  currentChannel.nombre ?? 'Canal sin nombre',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22.0,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4.0),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Señal: ${currentChannel.categoria ?? 'En vivo'}',
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11.0,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12.0),
+                    FadeTransition(
+                      opacity: playerStatus == PlayerStatus.connecting
+                          ? _pulseController
+                          : const AlwaysStoppedAnimation(1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 3.0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getBadgeColor().withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4.0),
+                          border: Border.all(
+                            color: _getBadgeColor().withValues(alpha: 0.5),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6.0,
+                              height: 6.0,
+                              decoration: BoxDecoration(
+                                color: _getBadgeColor(),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6.0),
+                            Flexible(
+                              child: Text(
+                                playerMessage.toUpperCase(),
+                                style: TextStyle(
+                                  color: _getBadgeColor(),
+                                  fontSize: 9.0,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              _buildFocusIconButton(
+                node: _favBtnNode,
+                icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite
+                    ? favoriteColor
+                    : (_favBtnNode.hasFocus ? Colors.white : Colors.white38),
+                onPressed: () => _toggleFavorite(currentChannel.id ?? 0),
+              ),
+              _buildFocusIconButton(
+                node: _refreshBtnNode,
+                icon: Icons.refresh,
+                color: _refreshBtnNode.hasFocus ? Colors.white : Colors.white54,
+                onPressed: _refreshChannels,
+              ),
+              _buildFocusIconButton(
+                node: _logoutBtnNode,
+                icon: Icons.logout,
+                color: _logoutBtnNode.hasFocus ? Colors.white : Colors.white54,
+                onPressed: _logout,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFocusIconButton({
+    required FocusNode node,
+    required IconData icon,
+    required Color color,
+    required void Function() onPressed,
+  }) {
+    return Focus(
+      focusNode: node,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          onPressed();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+        decoration: BoxDecoration(
+          color: node.hasFocus
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: node.hasFocus ? Colors.white : Colors.transparent,
+            width: 2.0,
+          ),
+        ),
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon, color: color),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = AppState.of(context);
@@ -466,11 +754,11 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                       onTap: _toggleFullScreen,
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
-                        padding: _playerNode.hasFocus
+                        padding: (_playerNode.hasFocus && !_isFullScreen)
                             ? const EdgeInsets.all(4.0)
                             : EdgeInsets.zero,
                         decoration: BoxDecoration(
-                          color: _playerNode.hasFocus
+                          color: (_playerNode.hasFocus && !_isFullScreen)
                               ? Colors.red
                               : Colors.transparent,
                           borderRadius: (_isFullScreen || isLandscape)
@@ -588,240 +876,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildChannelInfo(
-    listaDeCanales currentChannel,
-    Color favoriteColor,
-    bool isFavorite,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  currentChannel.nombre ?? 'Canal sin nombre',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4.0),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        'Señal: ${currentChannel.categoria ?? 'En vivo'}',
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 11.0,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    FadeTransition(
-                      opacity: playerStatus == PlayerStatus.connecting
-                          ? _pulseController
-                          : const AlwaysStoppedAnimation(1),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0,
-                          vertical: 3.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getBadgeColor().withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4.0),
-                          border: Border.all(
-                            color: _getBadgeColor().withValues(alpha: 0.5),
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6.0,
-                              height: 6.0,
-                              decoration: BoxDecoration(
-                                color: _getBadgeColor(),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6.0),
-                            Flexible(
-                              child: Text(
-                                playerMessage.toUpperCase(),
-                                style: TextStyle(
-                                  color: _getBadgeColor(),
-                                  fontSize: 9.0,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => _toggleFavorite(currentChannel.id ?? 0),
-                icon: Icon(
-                  isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: isFavorite ? favoriteColor : Colors.white38,
-                ),
-              ),
-              IconButton(
-                onPressed: _refreshChannels,
-                icon: const Icon(Icons.refresh, color: Colors.white54),
-              ),
-              IconButton(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout, color: Colors.white54),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildListSection(
-    AppState appState,
-    List<listaDeCanales> channels,
-    List<listaDeCanales> filteredChannels,
-    listaDeCanales currentChannel,
-  ) {
-    final favoriteColor = Colors.red.withValues(alpha: 0.7);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildTabButton(
-                'CANALES',
-                (!appState.isShowingFavorites && !appState.isShowingAbout),
-                _channelsTabNode,
-                () => appState.setShowingAbout(false),
-              ),
-              _buildTabButton(
-                'FAVORITOS',
-                appState.isShowingFavorites,
-                _favoritesTabNode,
-                () => appState.setShowingFavorites(true),
-              ),
-              _buildTabButton(
-                'ACERCA DE..',
-                appState.isShowingAbout,
-                _aboutTabNode,
-                () => appState.setShowingAbout(true),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12.0),
-        if (appState.isShowingAbout)
-          Expanded(child: _buildAboutSection(appState))
-        else ...[
-          _buildCategoryFilters(channels, appState),
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 10.0,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.5,
-                crossAxisSpacing: 16.0,
-                mainAxisSpacing: 16.0,
-              ),
-              itemCount: filteredChannels.length,
-              itemBuilder: (context, index) {
-                final channel = filteredChannels[index];
-                final isSelected = currentChannel.id == channel.id;
-                return ChannelCard(
-                  channel: channel,
-                  isCurrentlyPlaying: isSelected,
-                  onTap: () => _onChannelSelected(channel),
-                  autofocus: index == 0,
-                );
-              },
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildTabButton(
-    String label,
-    bool isSelected,
-    FocusNode node,
-    void Function() onTap,
-  ) {
-    final bool hasFocus = node.hasFocus;
-    return Focus(
-      focusNode: node,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          onTap();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-          decoration: BoxDecoration(
-            color: hasFocus
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(10.0),
-            border: Border.all(
-              color: hasFocus ? Colors.red : Colors.transparent,
-              width: 2.0,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? Colors.red
-                  : (hasFocus ? Colors.white : Colors.white38),
-              fontSize: 14.0,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -6,10 +6,10 @@ import 'package:flutter/services.dart';
 class CategoryChip extends StatefulWidget {
   @NowaGenerated({'loader': 'auto-constructor'})
   const CategoryChip({
-    super.key,
     required this.label,
     required this.isSelected,
     required this.onSelected,
+    super.key,
   });
 
   final String label;
@@ -40,13 +40,13 @@ class _CategoryChipState extends State<CategoryChip> {
         if (_isFocused &&
             (event.logicalKey == LogicalKeyboardKey.enter ||
                 event.logicalKey == LogicalKeyboardKey.select)) {
-          widget.onSelected(!widget.isSelected);
+          widget.onSelected(true);
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
       child: GestureDetector(
-        onTap: () => widget.onSelected(!widget.isSelected),
+        onTap: () => widget.onSelected(true),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
