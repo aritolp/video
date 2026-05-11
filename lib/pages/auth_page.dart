@@ -126,76 +126,6 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    bool isPassword = false,
-    FocusNode? focusNode,
-    FocusNode? nextNode,
-  }) {
-    final bool hasFocus = focusNode?.hasFocus ?? false;
-    return Focus(
-      onFocusChange: (hasFocus) {
-        if (hasFocus) {
-          Scrollable.ensureVisible(
-            context,
-            alignment: 0.5,
-            duration: const Duration(milliseconds: 300),
-          );
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: hasFocus
-              ? Colors.red.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(
-            color: hasFocus ? Colors.red : Colors.white10,
-            width: hasFocus ? 2.5 : 1.0,
-          ),
-          boxShadow: [
-            if (hasFocus)
-              BoxShadow(
-                color: Colors.red.withValues(alpha: 0.2),
-                blurRadius: 10.0,
-                spreadRadius: 1.0,
-              ),
-          ],
-        ),
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          obscureText: isPassword,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(
-              color: hasFocus ? Colors.white : Colors.white38,
-            ),
-            prefixIcon: Icon(
-              icon,
-              color: hasFocus ? Colors.red : Colors.white38,
-            ),
-            border: Border.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20.0,
-              vertical: 16.0,
-            ),
-          ),
-          onSubmitted: (_) {
-            if (nextNode != null) {
-              nextNode.requestFocus();
-            } else {
-              _handleAuth();
-            }
-          },
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -449,6 +379,76 @@ class _AuthPageState extends State<AuthPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    bool isPassword = false,
+    FocusNode? focusNode,
+    FocusNode? nextNode,
+  }) {
+    final bool hasFocus = focusNode?.hasFocus ?? false;
+    return Focus(
+      onFocusChange: (hasFocus) {
+        if (hasFocus) {
+          Scrollable.ensureVisible(
+            context,
+            alignment: 0.5,
+            duration: const Duration(milliseconds: 300),
+          );
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: hasFocus
+              ? Colors.red.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(
+            color: hasFocus ? Colors.red : Colors.white10,
+            width: hasFocus ? 2.5 : 1.0,
+          ),
+          boxShadow: [
+            if (hasFocus)
+              BoxShadow(
+                color: Colors.red.withValues(alpha: 0.2),
+                blurRadius: 10.0,
+                spreadRadius: 1.0,
+              ),
+          ],
+        ),
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          obscureText: isPassword,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: hasFocus ? Colors.white : Colors.white38,
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: hasFocus ? Colors.red : Colors.white38,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 16.0,
+            ),
+          ),
+          onSubmitted: (_) {
+            if (nextNode != null) {
+              nextNode.requestFocus();
+            } else {
+              _handleAuth();
+            }
+          },
+        ),
       ),
     );
   }
