@@ -29,7 +29,7 @@ class WebVideoPlayer extends StatefulWidget {
 
 @NowaGenerated()
 class _WebVideoPlayerState extends State<WebVideoPlayer> {
-  webview.InAppWebViewController? webController;
+  webview.InAppWebViewController? _webController;
 
   @override
   void didUpdateWidget(WebVideoPlayer oldWidget) {
@@ -40,10 +40,11 @@ class _WebVideoPlayerState extends State<WebVideoPlayer> {
   }
 
   void _applyMuteStatus() {
-    if (webController != null) {
+    final ctrl = _webController;
+    if (ctrl != null) {
       final String muteScript =
           '        (function() {\n          var videos = document.getElementsByTagName("video");\n          for (var i = 0; i < videos.length; i++) {\n            videos[i].muted = ${widget.isMuted};\n          }\n        })();\n      ';
-      webController.evaluateJavascript(source: muteScript);
+      ctrl.evaluateJavascript(source: muteScript);
     }
   }
 
@@ -76,7 +77,7 @@ class _WebVideoPlayerState extends State<WebVideoPlayer> {
       ),
       onWebViewCreated: (webviewController) {
         setState(() {
-          webController = webviewController;
+          _webController = webviewController;
         });
       },
       onLoadStop: (webviewController, url) async {
