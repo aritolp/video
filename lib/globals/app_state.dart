@@ -64,6 +64,12 @@ class AppState extends ChangeNotifier {
     return _appInfo;
   }
 
+  List<listaDeCanales> _externalChannels = [];
+
+  List<listaDeCanales> get externalChannels {
+    return _externalChannels;
+  }
+
   void changeTheme(ThemeData theme) {
     _theme = theme;
     notifyListeners();
@@ -162,6 +168,35 @@ class AppState extends ChangeNotifier {
     if (_appInfo == null) {
       _appInfo = await SupabaseService().getAppInfo();
       notifyListeners();
+    }
+  }
+
+  Future<void> loadExternalM3U(String url) async {
+    try {
+      final channels = await SupabaseService().parseM3UFromUrl(url);
+      _externalChannels = channels;
+      sharedPrefs.setString('external_m3u_url', url);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading external M3U: ${e}');
+      rethrow;
+    }
+  }
+
+  void clearExternalM3U() {
+    _externalChannels = [];
+    sharedPrefs.remove('external_m3u_url');
+    notifyListeners();
+  }
+
+  Future<void> loadSavedExternalM3U() async {
+    final savedUrl = sharedPrefs.getString('external_m3u_url');
+    if (savedUrl != null && savedUrl!.isNotEmpty) {
+      try {
+        await loadExternalM3U(savedUrl);
+      } catch (e) {
+        debugPrint('Failed to load saved M3U on startup: ${e}');
+      }
     }
   }
 }

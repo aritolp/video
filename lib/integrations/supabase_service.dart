@@ -5,6 +5,7 @@ import 'package:tvplus/models/lista_de_canales.dart';
 import 'package:tvplus/main.dart';
 import 'package:flutter/material.dart';
 import 'package:tvplus/models/app_info.dart';
+import 'package:http/http.dart' as http;
 
 @NowaGenerated()
 class SupabaseService {
@@ -154,5 +155,56 @@ class SupabaseService {
       debugPrint('Error fetching app info: ${e}');
     }
     return null;
+  }
+
+  Future<List<listaDeCanales>> parseM3UFromUrl(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        return parseM3UString(response.body);
+      }
+      throw Exception('Error cargando M3U: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('Error en parseM3UFromUrl: ${e}');
+      rethrow;
+    }
+  }
+
+  List<listaDeCanales> parseM3UString(String content) {
+    final List<listaDeCanales> channels = [];
+    final List<String> lines = content.split('\n');
+    String? currentName;
+    String? currentLogo;
+    String? currentGroup;
+    int tempId = -1000;
+    for (var line in lines) {
+      line = line.trim();
+      if (line.startsWith('#EXTINF:')) {
+        final commaIndex = line.lastIndexOf(',');
+        if (commaIndex != -1) {
+          currentName = line.substring(commaIndex + 1).trim();
+        }
+        final logoMatch = RegExp('tvg-logo="([^"]+)"').firstMatch(line);
+        currentLogo = logoMatch?.group(1);
+        final groupMatch = RegExp('group-title="([^"]+)"').firstMatch(line);
+        currentGroup = groupMatch?.group(1);
+      } else if (line.isNotEmpty && !line.startsWith('#')) {
+        if (currentName != null) {
+          channels.add(
+            listaDeCanales(
+              id: tempId--,
+              nombre: currentName,
+              url_stream: line,
+              logo: currentLogo,
+              categoria: 'M3U',
+            ),
+          );
+        }
+        currentName = null;
+        currentLogo = null;
+        currentGroup = null;
+      }
+    }
+    return channels;
   }
 }

@@ -6,11 +6,11 @@ import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:tvplus/globals/app_state.dart';
 import 'package:tvplus/main.dart';
 import 'package:flutter/services.dart';
-import 'package:tvplus/components/category_chip.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tvplus/components/channel_card.dart';
 import 'package:tvplus/components/hls_video_player.dart';
+import 'package:tvplus/components/category_chip.dart';
+import 'package:tvplus/components/channel_card.dart';
 
 @NowaGenerated()
 class TvPlus extends StatefulWidget {
@@ -106,38 +106,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     });
   }
 
-  Widget _buildCategoryFilters(
-    List<listaDeCanales> channels,
-    AppState appState,
-  ) {
-    final categories = channels
-        .map((c) => c.categoria ?? 'General')
-        .toSet()
-        .toList();
-    categories.sort();
-    return Container(
-      height: 45.0,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length + 1,
-        separatorBuilder: (context, index) => const SizedBox(width: 12.0),
-        itemBuilder: (context, index) {
-          final isAll = index == 0;
-          final category = isAll ? null : categories[index - 1];
-          final isSelected = appState.selectedCategory == category;
-          return CategoryChip(
-            label: isAll ? 'TODOS' : category!,
-            isSelected: isSelected,
-            onSelected: (selected) {
-              appState.setSelectedCategory(selected ? category : null);
-            },
-          );
-        },
-      ),
-    );
-  }
-
   Future<void> _logout() async {
     final bool? confirm = await showDialog<bool>(
       context: context,
@@ -195,63 +163,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
 
   void _toggleFavorite(int channelId) {
     AppState.of(context, listen: false).toggleFavorite(channelId);
-  }
-
-  Widget _buildAboutSection(AppState appState) {
-    final info = appState.appInfo;
-    if (info == null) {
-      return const Center(child: CircularProgressIndicator(color: Colors.red));
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 100.0,
-            height: 100.0,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(24.0),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: const Icon(Icons.tv, size: 50.0, color: Colors.white),
-          ),
-          const SizedBox(height: 32.0),
-          Text(
-            info.nombreApp,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28.0,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 8.0),
-          Text(
-            'Versión ${info.version}',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
-              fontSize: 14.0,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 48.0),
-          _buildInfoRow('Soporte', info.correo),
-          const SizedBox(height: 16.0),
-          _buildInfoRow('Sitio Web', info.sitioWeb),
-          const Spacer(),
-          Text(
-            'Diseñado con minimalismo en mente',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.2),
-              fontSize: 12.0,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildInfoRow(String label, String value) {
@@ -322,77 +233,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     }
   }
 
-  Widget _buildListSection(
-    AppState appState,
-    List<listaDeCanales> channels,
-    List<listaDeCanales> filteredChannels,
-    listaDeCanales currentChannel,
-  ) {
-    final favoriteColor = Colors.red.withValues(alpha: 0.7);
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildTabButton(
-                'CANALES',
-                (!appState.isShowingFavorites && !appState.isShowingAbout),
-                _channelsTabNode,
-                () => appState.setShowingAbout(false),
-              ),
-              _buildTabButton(
-                'FAVORITOS',
-                appState.isShowingFavorites,
-                _favoritesTabNode,
-                () => appState.setShowingFavorites(true),
-              ),
-              _buildTabButton(
-                'ACERCA DE..',
-                appState.isShowingAbout,
-                _aboutTabNode,
-                () => appState.setShowingAbout(true),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12.0),
-        if (appState.isShowingAbout)
-          Expanded(child: _buildAboutSection(appState))
-        else ...[
-          _buildCategoryFilters(channels, appState),
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 10.0,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.5,
-                crossAxisSpacing: 16.0,
-                mainAxisSpacing: 16.0,
-              ),
-              itemCount: filteredChannels.length,
-              itemBuilder: (context, index) {
-                final channel = filteredChannels[index];
-                final isSelected = currentChannel.id == channel.id;
-                return ChannelCard(
-                  channel: channel,
-                  isCurrentlyPlaying: isSelected,
-                  onTap: () => _onChannelSelected(channel),
-                  autofocus: index == 0,
-                );
-              },
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _buildTabButton(
     String label,
     bool isSelected,
@@ -440,24 +280,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
         ),
       ),
     );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _channelsFuture = SupabaseService().getAllCanales();
-    _loadPreferences();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-    _playerNode.addListener(() => setState(() {}));
-    _channelsTabNode.addListener(() => setState(() {}));
-    _favoritesTabNode.addListener(() => setState(() {}));
-    _aboutTabNode.addListener(() => setState(() {}));
-    _favBtnNode.addListener(() => setState(() {}));
-    _refreshBtnNode.addListener(() => setState(() {}));
-    _logoutBtnNode.addListener(() => setState(() {}));
   }
 
   @override
@@ -877,5 +699,337 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
         );
       },
     );
+  }
+
+  Widget _buildCategoryFilters(
+    List<listaDeCanales> channels,
+    AppState appState,
+  ) {
+    final allChannels = [...channels, ...appState.externalChannels];
+    final categories = allChannels
+        .map((c) => c.categoria ?? 'General')
+        .toSet()
+        .toList();
+    categories.sort();
+    return Container(
+      height: 45.0,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length + 1,
+        separatorBuilder: (context, index) => const SizedBox(width: 12.0),
+        itemBuilder: (context, index) {
+          final isAll = index == 0;
+          final category = isAll ? null : categories[index - 1];
+          final isSelected = appState.selectedCategory == category;
+          return CategoryChip(
+            label: isAll ? 'TODOS' : category!,
+            isSelected: isSelected,
+            onSelected: (selected) {
+              appState.setSelectedCategory(selected ? category : null);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildListSection(
+    AppState appState,
+    List<listaDeCanales> channels,
+    List<listaDeCanales> filteredChannels,
+    listaDeCanales currentChannel,
+  ) {
+    final allChannelsForGrid = [...channels, ...appState.externalChannels];
+    List<listaDeCanales> finalFiltered;
+    if (appState.isShowingFavorites) {
+      final favIds = appState.favoriteChannels ?? [];
+      finalFiltered = allChannelsForGrid
+          .where((c) => favIds.contains(c.id))
+          .toList();
+    } else if (appState.selectedCategory != null) {
+      finalFiltered = allChannelsForGrid
+          .where(
+            (c) =>
+                (c.categoria ?? 'General').toLowerCase() ==
+                appState.selectedCategory?.toLowerCase(),
+          )
+          .toList();
+    } else {
+      finalFiltered = allChannelsForGrid;
+    }
+    final activeChannel = allChannelsForGrid.firstWhere(
+      (c) => c.id == appState.selectedChannelId,
+      orElse: () => allChannelsForGrid[0],
+    );
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildTabButton(
+                'CANALES',
+                (!appState.isShowingFavorites && !appState.isShowingAbout),
+                _channelsTabNode,
+                () => appState.setShowingAbout(false),
+              ),
+              _buildTabButton(
+                'FAVORITOS',
+                appState.isShowingFavorites,
+                _favoritesTabNode,
+                () => appState.setShowingFavorites(true),
+              ),
+              _buildTabButton(
+                'ACERCA DE..',
+                appState.isShowingAbout,
+                _aboutTabNode,
+                () => appState.setShowingAbout(true),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        if (appState.isShowingAbout)
+          Expanded(child: _buildAboutSection(appState))
+        else ...[
+          _buildCategoryFilters(channels, appState),
+          const SizedBox(height: 8.0),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 10.0,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1.5,
+                crossAxisSpacing: 16.0,
+                mainAxisSpacing: 16.0,
+              ),
+              itemCount: finalFiltered.length,
+              itemBuilder: (context, index) {
+                final channel = finalFiltered[index];
+                final isSelected = activeChannel.id == channel.id;
+                return ChannelCard(
+                  channel: channel,
+                  isCurrentlyPlaying: isSelected,
+                  onTap: () => _onChannelSelected(channel),
+                  autofocus: index == 0,
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAboutSection(AppState appState) {
+    final info = appState.appInfo;
+    if (info == null) {
+      return const Center(child: CircularProgressIndicator(color: Colors.red));
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              width: 80.0,
+              height: 80.0,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(20.0),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              child: const Icon(Icons.tv, size: 40.0, color: Colors.white),
+            ),
+            const SizedBox(height: 24.0),
+            Text(
+              info.nombreApp,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24.0,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 32.0),
+            _buildM3UImportSection(appState),
+            const SizedBox(height: 32.0),
+            _buildInfoRow('Soporte', info.correo),
+            const SizedBox(height: 12.0),
+            _buildInfoRow('Sitio Web', info.sitioWeb),
+            const SizedBox(height: 20.0),
+            Text(
+              'Versión ${info.version}',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.3),
+                fontSize: 12.0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildM3UImportSection(AppState appState) {
+    final hasExternal = appState.externalChannels.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.link, color: Colors.red, size: 20.0),
+              const SizedBox(width: 12.0),
+              const Expanded(
+                child: Text(
+                  'Lista M3U Externa',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (hasExternal)
+                IconButton(
+                  onPressed: () => appState.clearExternalM3U(),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.white54,
+                    size: 20.0,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8.0),
+          Text(
+            hasExternal
+                ? '${appState.externalChannels.length} canales cargados'
+                : 'Carga una lista M3U o Xtream Codes',
+            style: const TextStyle(color: Colors.white54, fontSize: 12.0),
+          ),
+          const SizedBox(height: 16.0),
+          ElevatedButton(
+            onPressed: () => _showM3UDialog(appState),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+            ),
+            child: Text(hasExternal ? 'Actualizar Lista' : 'Configurar M3U'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showM3UDialog(AppState appState) {
+    final controller = TextEditingController(
+      text: sharedPrefs.getString('external_m3u_url') ?? '',
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Configurar M3U',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Pega tu URL de M3U o Xtream Codes:',
+              style: TextStyle(color: Colors.white70, fontSize: 13.0),
+            ),
+            const SizedBox(height: 16.0),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'http://...',
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final url = controller.text.trim();
+                if (url.isNotEmpty) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    const SnackBar(content: Text('Cargando canales M3U...')),
+                  );
+                  await appState.loadExternalM3U(url);
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        '¡${appState.externalChannels.length} canales cargados con éxito!',
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${e}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('CARGAR'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _channelsFuture = SupabaseService().getAllCanales();
+    _loadPreferences();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    _playerNode.addListener(() => setState(() {}));
+    _channelsTabNode.addListener(() => setState(() {}));
+    _favoritesTabNode.addListener(() => setState(() {}));
+    _aboutTabNode.addListener(() => setState(() {}));
+    _favBtnNode.addListener(() => setState(() {}));
+    _refreshBtnNode.addListener(() => setState(() {}));
+    _logoutBtnNode.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppState.of(context, listen: false).loadSavedExternalM3U();
+    });
   }
 }
