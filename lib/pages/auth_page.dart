@@ -55,6 +55,15 @@ class _AuthPageState extends State<AuthPage> {
     _submitNode.addListener(() => setState(() {}));
     _toggleCodeNode.addListener(() => setState(() {}));
     _toggleModeNode.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_useCode) {
+        _codeNode.requestFocus();
+      } else if (!_isLogin) {
+        _nombreNode.requestFocus();
+      } else {
+        _emailNode.requestFocus();
+      }
+    });
   }
 
   @override
@@ -136,6 +145,7 @@ class _AuthPageState extends State<AuthPage> {
   }) {
     final bool hasFocus = focusNode?.hasFocus ?? false;
     return Focus(
+      focusNode: focusNode,
       onFocusChange: (hasFocus) {
         if (hasFocus) {
           Scrollable.ensureVisible(
@@ -145,6 +155,19 @@ class _AuthPageState extends State<AuthPage> {
           );
         }
         setState(() {});
+      },
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          if (nextNode != null) {
+            nextNode.requestFocus();
+          } else {
+            _handleAuth();
+          }
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
       child: Container(
         decoration: BoxDecoration(
@@ -167,9 +190,10 @@ class _AuthPageState extends State<AuthPage> {
         ),
         child: TextField(
           controller: controller,
-          focusNode: focusNode,
           obscureText: isPassword,
           style: const TextStyle(color: Colors.white),
+          enabled: true,
+          focusNode: FocusNode(canRequestFocus: false),
           decoration: InputDecoration(
             labelText: label,
             labelStyle: TextStyle(
@@ -186,13 +210,6 @@ class _AuthPageState extends State<AuthPage> {
               vertical: 16.0,
             ),
           ),
-          onSubmitted: (_) {
-            if (nextNode != null) {
-              nextNode.requestFocus();
-            } else {
-              _handleAuth();
-            }
-          },
         ),
       ),
     );
@@ -384,6 +401,18 @@ class _AuthPageState extends State<AuthPage> {
                         }
                         setState(() {});
                       },
+                      onKeyEvent: (node, event) {
+                        if (event is KeyDownEvent &&
+                            (event.logicalKey == LogicalKeyboardKey.enter ||
+                                event.logicalKey ==
+                                    LogicalKeyboardKey.select)) {
+                          setState(() {
+                            _useCode = !_useCode;
+                          });
+                          return KeyEventResult.handled;
+                        }
+                        return KeyEventResult.ignored;
+                      },
                       child: TextButton(
                         onPressed: () => setState(() {
                           _useCode = !_useCode;
@@ -426,6 +455,16 @@ class _AuthPageState extends State<AuthPage> {
                             );
                           }
                           setState(() {});
+                        },
+                        onKeyEvent: (node, event) {
+                          if (event is KeyDownEvent &&
+                              (event.logicalKey == LogicalKeyboardKey.enter ||
+                                  event.logicalKey ==
+                                      LogicalKeyboardKey.select)) {
+                            setState(() => _isLogin = !_isLogin);
+                            return KeyEventResult.handled;
+                          }
+                          return KeyEventResult.ignored;
                         },
                         child: TextButton(
                           onPressed: () => setState(() => _isLogin = !_isLogin),

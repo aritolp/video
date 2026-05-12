@@ -517,6 +517,8 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
 
   Widget _buildM3UImportSection(AppState appState) {
     final hasExternal = appState.externalChannels.isNotEmpty;
+    final FocusNode _m3uBtnNode = FocusNode();
+    final FocusNode _m3uDelNode = FocusNode();
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -540,12 +542,34 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                 ),
               ),
               if (hasExternal)
-                IconButton(
-                  onPressed: () => appState.clearExternalM3U(),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.white54,
-                    size: 20.0,
+                Focus(
+                  focusNode: _m3uDelNode,
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent &&
+                        (event.logicalKey == LogicalKeyboardKey.enter ||
+                            event.logicalKey == LogicalKeyboardKey.select)) {
+                      appState.clearExternalM3U();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _m3uDelNode.hasFocus
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: () => appState.clearExternalM3U(),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: _m3uDelNode.hasFocus
+                            ? Colors.white
+                            : Colors.white54,
+                        size: 20.0,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -558,16 +582,34 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
             style: const TextStyle(color: Colors.white54, fontSize: 12.0),
           ),
           const SizedBox(height: 16.0),
-          ElevatedButton(
-            onPressed: () => _showM3UDialog(appState),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.0),
+          Focus(
+            focusNode: _m3uBtnNode,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.select)) {
+                _showM3UDialog(appState);
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: ElevatedButton(
+              onPressed: () => _showM3UDialog(appState),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                side: BorderSide(
+                  color: _m3uBtnNode.hasFocus
+                      ? Colors.white
+                      : Colors.transparent,
+                  width: 2.0,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
               ),
+              child: Text(hasExternal ? 'Actualizar Lista' : 'Configurar M3U'),
             ),
-            child: Text(hasExternal ? 'Actualizar Lista' : 'Configurar M3U'),
           ),
         ],
       ),
@@ -578,6 +620,9 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     final controller = TextEditingController(
       text: sharedPrefs.getString('external_m3u_url') ?? '',
     );
+    final FocusNode _urlNode = FocusNode();
+    final FocusNode _cancelNode = FocusNode();
+    final FocusNode _loadNode = FocusNode();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -594,61 +639,116 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
               style: TextStyle(color: Colors.white70, fontSize: 13.0),
             ),
             const SizedBox(height: 16.0),
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'http://...',
-                hintStyle: const TextStyle(color: Colors.white24),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                border: OutlineInputBorder(
+            Focus(
+              focusNode: _urlNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
+                    (event.logicalKey == LogicalKeyboardKey.enter ||
+                        event.logicalKey == LogicalKeyboardKey.select)) {
+                  _loadNode.requestFocus();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: _urlNode.hasFocus ? Colors.red : Colors.transparent,
+                    width: 2.0,
+                  ),
                   borderRadius: BorderRadius.circular(8.0),
-                  borderSide: BorderSide.none,
+                ),
+                child: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'http://...',
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('CANCELAR'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                final url = controller.text.trim();
-                if (url.isNotEmpty) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    const SnackBar(content: Text('Cargando canales M3U...')),
-                  );
-                  await appState.loadExternalM3U(url);
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '¡${appState.externalChannels.length} canales cargados con éxito!',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(this.context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: ${e}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+          Focus(
+            focusNode: _cancelNode,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.select)) {
+                Navigator.pop(context);
+                return KeyEventResult.handled;
               }
+              return KeyEventResult.ignored;
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('CARGAR'),
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'CANCELAR',
+                style: TextStyle(
+                  color: _cancelNode.hasFocus ? Colors.white : Colors.white54,
+                ),
+              ),
+            ),
+          ),
+          Focus(
+            focusNode: _loadNode,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.select)) {
+                _handleM3ULoad(appState, controller.text.trim());
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: ElevatedButton(
+              onPressed: () => _handleM3ULoad(appState, controller.text.trim()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                side: BorderSide(
+                  color: _loadNode.hasFocus ? Colors.white : Colors.transparent,
+                  width: 2.0,
+                ),
+              ),
+              child: const Text('CARGAR'),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleM3ULoad(AppState appState, String url) async {
+    try {
+      if (url.isNotEmpty) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          const SnackBar(content: Text('Cargando canales M3U...')),
+        );
+        await appState.loadExternalM3U(url);
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '¡${appState.externalChannels.length} canales cargados con éxito!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(content: Text('Error: ${e}'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   void _onChannelSelected(listaDeCanales channel) {
@@ -777,6 +877,14 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
             ),
             child: Focus(
               focusNode: _searchNode,
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                  FocusScope.of(context).nextFocus();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
+              },
               child: Container(
                 height: 40.0,
                 decoration: BoxDecoration(
@@ -830,7 +938,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                   channel: channel,
                   isCurrentlyPlaying: isSelected,
                   onTap: () => _onChannelSelected(channel),
-                  autofocus: index == 0,
+                  autofocus: index == 0 && _searchQuery.isEmpty,
                 );
               },
             ),

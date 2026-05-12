@@ -59,7 +59,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   bool _showSkipBackward = false;
 
-  double _volume = 1;
+  double _volume = 1.0;
 
   double _brightness = 0.5;
 
@@ -68,6 +68,14 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   bool _showBrightnessIndicator = false;
 
   Timer? _indicatorTimer;
+
+  bool get _isSeekableFormat {
+    final url = widget.url.toLowerCase();
+    return url.contains('.mp4') ||
+        url.contains('.mkv') ||
+        url.contains('.webm') ||
+        url.contains('.mov');
+  }
 
   @override
   void initState() {
@@ -87,7 +95,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   void _skip(int seconds) {
     if (_videoPlayerController == null ||
-        !_videoPlayerController!.value.isInitialized) {
+        !_videoPlayerController!.value.isInitialized ||
+        !_isSeekableFormat) {
       return;
     }
     final newPosition =
@@ -116,6 +125,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   void _handleDoubleTap(Offset position) {
+    if (!_isSeekableFormat) {
+      return;
+    }
     final screenWidth = MediaQuery.of(context).size.width;
     if (position.dx < screenWidth / 2) {
       _skip(-10);
@@ -138,19 +150,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Widget _skipIndicator(IconData icon) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16.0),
       decoration: const BoxDecoration(
         color: Colors.black45,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: Colors.white, size: 40),
+      child: Icon(icon, color: Colors.white, size: 40.0),
     );
   }
 
   Widget _buildCustomControls() {
     return Positioned.fill(
       child: AnimatedOpacity(
-        opacity: _showControls ? 1 : 0,
+        opacity: _showControls ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 300),
         child: IgnorePointer(
           ignoring: !_showControls,
@@ -163,16 +175,17 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _controlButton(
-                      icon: Icons.replay_10,
-                      onPressed: () => _skip(-10),
-                    ),
-                    const SizedBox(width: 32),
+                    if (_isSeekableFormat)
+                      _controlButton(
+                        icon: Icons.replay_10,
+                        onPressed: () => _skip(-10),
+                      ),
+                    const SizedBox(width: 32.0),
                     _controlButton(
                       icon: _videoPlayerController!.value.isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
-                      size: 64,
+                      size: 64.0,
                       onPressed: () {
                         setState(() {
                           _videoPlayerController!.value.isPlaying
@@ -182,15 +195,16 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                         _startControlsTimer();
                       },
                     ),
-                    const SizedBox(width: 32),
-                    _controlButton(
-                      icon: Icons.forward_10,
-                      onPressed: () => _skip(10),
-                    ),
+                    const SizedBox(width: 32.0),
+                    if (_isSeekableFormat)
+                      _controlButton(
+                        icon: Icons.forward_10,
+                        onPressed: () => _skip(10),
+                      ),
                   ],
                 ),
                 const Spacer(),
-                _buildSeekBar(),
+                if (_isSeekableFormat) _buildSeekBar(),
               ],
             ),
           ),
@@ -232,14 +246,16 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     final duration = _videoPlayerController!.value.duration;
     final position = _videoPlayerController!.value.position;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
         children: [
           Expanded(
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(
-                trackHeight: 4,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                trackHeight: 4.0,
+                thumbShape: const RoundSliderThumbShape(
+                  enabledThumbRadius: 6.0,
+                ),
                 activeTrackColor: Colors.red,
                 inactiveTrackColor: Colors.white24,
                 thumbColor: Colors.red,
@@ -251,7 +267,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                 ),
                 max: duration.inSeconds.toDouble() > 0
                     ? duration.inSeconds.toDouble()
-                    : 1,
+                    : 1.0,
                 onChanged: (value) {
                   _videoPlayerController?.seekTo(
                     Duration(seconds: value.toInt()),
@@ -303,7 +319,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
           videoPlayerController: _videoPlayerController!,
           aspectRatio: 16 / 9,
           autoPlay: true,
-          isLive: true,
+          isLive: !_isSeekableFormat,
           showControls: false,
         );
         _videoPlayerController?.play();
@@ -359,14 +375,21 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     } else if (value!.isBuffering) {
     } else if (value!.isPlaying) {
       if (_currentStatus != PlayerStatus.playing) {
-        _updateStatus(PlayerStatus.playing, 'En vivo');
+        _updateStatus(
+          PlayerStatus.playing,
+          _isSeekableFormat ? 'Video' : 'En vivo',
+        );
         _retryCount = 0;
       }
     } else if (_isInitialized &&
         !value!.isPlaying &&
         !value!.isBuffering &&
-        _currentStatus == PlayerStatus.playing) {
+        _currentStatus == PlayerStatus.playing &&
+        !_isSeekableFormat) {
       _handleError('Playback stalled');
+    }
+    if (_isSeekableFormat) {
+      setState(() {});
     }
   }
 
@@ -416,19 +439,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Widget _buildGestureIndicator(IconData icon, double value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       decoration: BoxDecoration(
         color: Colors.black54,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20.0),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 8),
+          Icon(icon, color: Colors.white, size: 20.0),
+          const SizedBox(width: 8.0),
           SizedBox(
-            width: 100,
-            height: 4,
+            width: 100.0,
+            height: 4.0,
             child: LinearProgressIndicator(
               value: value,
               backgroundColor: Colors.white24,
@@ -478,36 +501,39 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
               ),
             ),
           ),
-        if (_showSkipBackward)
-          Positioned(left: 40, child: _skipIndicator(Icons.replay_10)),
-        if (_showSkipForward)
-          Positioned(right: 40, child: _skipIndicator(Icons.forward_10)),
+        if (_showSkipBackward && _isSeekableFormat)
+          Positioned(left: 40.0, child: _skipIndicator(Icons.replay_10)),
+        if (_showSkipForward && _isSeekableFormat)
+          Positioned(right: 40.0, child: _skipIndicator(Icons.forward_10)),
         if (_showVolumeIndicator)
           Positioned(
-            top: 40,
+            top: 40.0,
             child: _buildGestureIndicator(Icons.volume_up, _volume),
           ),
         if (_showBrightnessIndicator)
           Positioned(
-            top: 40,
+            top: 40.0,
             child: _buildGestureIndicator(Icons.brightness_6, _brightness),
           ),
         if (_isInitialized && !hasError) _buildCustomControls(),
         if (_currentStatus == PlayerStatus.retrying ||
             _currentStatus == PlayerStatus.connecting)
           Positioned(
-            bottom: 80,
+            bottom: 80.0,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12.0,
+                vertical: 6.0,
+              ),
               decoration: BoxDecoration(
                 color: Colors.black54,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20.0),
               ),
               child: Text(
                 _currentStatus == PlayerStatus.retrying
                     ? 'Reconectando...'
                     : 'Conectando...',
-                style: const TextStyle(color: Colors.white, fontSize: 10),
+                style: const TextStyle(color: Colors.white, fontSize: 10.0),
               ),
             ),
           ),
