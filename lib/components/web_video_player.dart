@@ -29,22 +29,9 @@ class WebVideoPlayer extends StatefulWidget {
 
 @NowaGenerated()
 class _WebVideoPlayerState extends State<WebVideoPlayer> {
-  webview.InAppWebViewController? webController;
-
   @override
   void didUpdateWidget(WebVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.isMuted != widget.isMuted) {
-      _applyMuteStatus();
-    }
-  }
-
-  void _applyMuteStatus() {
-    if (webController != null) {
-      final String muteScript =
-          '        (function() {\n          var videos = document.getElementsByTagName("video");\n          for (var i = 0; i < videos.length; i++) {\n            videos[i].muted = ${widget.isMuted};\n          }\n        })();\n      ';
-      webController.evaluateJavascript(source: muteScript);
-    }
   }
 
   @override
@@ -73,18 +60,24 @@ class _WebVideoPlayerState extends State<WebVideoPlayer> {
         transparentBackground: true,
         disableVerticalScroll: true,
         disableHorizontalScroll: true,
+        mixedContentMode: webview.MixedContentMode.MIXED_CONTENT_ALWAYS_ALLOW,
+        safeBrowsingEnabled: false,
       ),
-      onWebViewCreated: (webviewController) {
-        setState(() {
-          webController = webviewController;
-        });
-      },
-      onLoadStop: (webviewController, url) async {
+      onWebViewCreated: (controller) {},
+      onLoadStop: (controller, url) async {
         final String setupScript =
-            '(function() {\n            var style = document.createElement("style");\n            style.innerHTML = "video { width: 100% !important; height: 100% !important; object-fit: contain !important; background: black !important; } body { margin: 0; padding: 0; background: black !important; overflow: hidden !important; } .logo, .channel-logo, #logo, [class*=\'logo\'], [id*=\'logo\'] { display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }";\n            document.head.appendChild(style);\n            \n            function forcePlayAndFix() {\n              var videos = document.getElementsByTagName("video");\n              for (var i = 0; i < videos.length; i++) {\n                var v = videos[i];\n                v.muted = ${widget.isMuted};\n                if (v.paused) {\n                  v.play().catch(function(e) {});\n                }\n                v.onpause = function(e) {\n                  if (v.paused) v.play().catch(function(e) {});\n                };\n              }\n              var overlays = document.querySelectorAll("div[class*=\'overlay\'], div[id*=\'overlay\'], div[class*=\'popup\']");\n              for (var i = 0; i < overlays.length; i++) {\n                overlays[i].style.display = "none";\n              }\n            }\n            setInterval(forcePlayAndFix, 1000);\n          })();';
-        await webviewController.evaluateJavascript(source: setupScript);
+            '(function() {            var style = document.createElement("style");            style.innerHTML = "video { width: 100% !important; height: 100% !important; object-fit: contain !important; background: black !important; } body { margin: 0; padding: 0; background: black !important; overflow: hidden !important; } .logo, .channel-logo, #logo, [class*=\'logo\'], [id*=\'logo\'] { display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }";            document.head.appendChild(style);                        function forcePlayAndFix() {              var videos = document.getElementsByTagName("video");              for (var i = 0; i < videos.length; i++) {                var v = videos[i];                v.muted = ${widget.isMuted};                if (v.paused) {                  v.play().catch(function(e) {});                }                v.onpause = function(e) {                  if (v.paused) v.play().catch(function(e) {});                };              }              var overlays = document.querySelectorAll("div[class*=\'overlay\'], div[id*=\'overlay\'], div[class*=\'popup\']");              for (var i = 0; i < overlays.length; i++) {                overlays[i].style.display = "none";              }            }            setInterval(forcePlayAndFix, 1000);          })();';
+        await controller.evaluateJavascript(source: setupScript);
       },
-      onCreateWindow: (webviewController, createWindowAction) async => false,
+      onCreateWindow: (controller, createWindowAction) async => false,
+      onReceivedHttpAuthRequest: (controller, challenge) async =>
+          webview.HttpAuthResponse(
+            action: webview.HttpAuthResponseAction.PROCEED,
+          ),
+      onReceivedServerTrustAuthRequest: (controller, challenge) async =>
+          webview.ServerTrustAuthResponse(
+            action: webview.ServerTrustAuthResponseAction.PROCEED,
+          ),
     );
   }
 }

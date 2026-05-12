@@ -126,6 +126,78 @@ class _AuthPageState extends State<AuthPage> {
     }
   }
 
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    bool isPassword = false,
+    FocusNode? focusNode,
+    FocusNode? nextNode,
+  }) {
+    final bool hasFocus = focusNode?.hasFocus ?? false;
+    return Focus(
+      onFocusChange: (hasFocus) {
+        if (hasFocus) {
+          Scrollable.ensureVisible(
+            context,
+            alignment: 0.5,
+            duration: const Duration(milliseconds: 300),
+          );
+        }
+        setState(() {});
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: hasFocus
+              ? Colors.red.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(
+            color: hasFocus ? Colors.white : Colors.white10,
+            width: hasFocus ? 3.0 : 1.0,
+          ),
+          boxShadow: [
+            if (hasFocus)
+              BoxShadow(
+                color: Colors.red.withValues(alpha: 0.2),
+                blurRadius: 10.0,
+                spreadRadius: 1.0,
+              ),
+          ],
+        ),
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          obscureText: isPassword,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: hasFocus ? Colors.white : Colors.white38,
+              fontWeight: hasFocus ? FontWeight.bold : FontWeight.normal,
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: hasFocus ? Colors.white : Colors.white38,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 16.0,
+            ),
+          ),
+          onSubmitted: (_) {
+            if (nextNode != null) {
+              nextNode.requestFocus();
+            } else {
+              _handleAuth();
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -240,6 +312,7 @@ class _AuthPageState extends State<AuthPage> {
                             duration: const Duration(milliseconds: 300),
                           );
                         }
+                        setState(() {});
                       },
                       onKeyEvent: (node, event) {
                         if (event is KeyDownEvent &&
@@ -275,7 +348,7 @@ class _AuthPageState extends State<AuthPage> {
                               color: _submitNode.hasFocus
                                   ? Colors.white
                                   : Colors.transparent,
-                              width: 2.0,
+                              width: 3.0,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16.0),
@@ -309,6 +382,7 @@ class _AuthPageState extends State<AuthPage> {
                             duration: const Duration(milliseconds: 300),
                           );
                         }
+                        setState(() {});
                       },
                       child: TextButton(
                         onPressed: () => setState(() {
@@ -317,8 +391,9 @@ class _AuthPageState extends State<AuthPage> {
                         style: TextButton.styleFrom(
                           side: BorderSide(
                             color: _toggleCodeNode.hasFocus
-                                ? Colors.white38
+                                ? Colors.white
                                 : Colors.transparent,
+                            width: 2.0,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8.0),
@@ -332,6 +407,9 @@ class _AuthPageState extends State<AuthPage> {
                             color: _toggleCodeNode.hasFocus
                                 ? Colors.white
                                 : Colors.white54,
+                            fontWeight: _toggleCodeNode.hasFocus
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       ),
@@ -347,14 +425,16 @@ class _AuthPageState extends State<AuthPage> {
                               duration: const Duration(milliseconds: 300),
                             );
                           }
+                          setState(() {});
                         },
                         child: TextButton(
                           onPressed: () => setState(() => _isLogin = !_isLogin),
                           style: TextButton.styleFrom(
                             side: BorderSide(
                               color: _toggleModeNode.hasFocus
-                                  ? Colors.white10
+                                  ? Colors.white
                                   : Colors.transparent,
+                              width: 2.0,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8.0),
@@ -369,6 +449,9 @@ class _AuthPageState extends State<AuthPage> {
                                   ? Colors.white
                                   : Colors.white38,
                               fontSize: 12.0,
+                              fontWeight: _toggleModeNode.hasFocus
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         ),
@@ -379,76 +462,6 @@ class _AuthPageState extends State<AuthPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
-    bool isPassword = false,
-    FocusNode? focusNode,
-    FocusNode? nextNode,
-  }) {
-    final bool hasFocus = focusNode?.hasFocus ?? false;
-    return Focus(
-      onFocusChange: (hasFocus) {
-        if (hasFocus) {
-          Scrollable.ensureVisible(
-            context,
-            alignment: 0.5,
-            duration: const Duration(milliseconds: 300),
-          );
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: hasFocus
-              ? Colors.red.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16.0),
-          border: Border.all(
-            color: hasFocus ? Colors.red : Colors.white10,
-            width: hasFocus ? 2.5 : 1.0,
-          ),
-          boxShadow: [
-            if (hasFocus)
-              BoxShadow(
-                color: Colors.red.withValues(alpha: 0.2),
-                blurRadius: 10.0,
-                spreadRadius: 1.0,
-              ),
-          ],
-        ),
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          obscureText: isPassword,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(
-              color: hasFocus ? Colors.white : Colors.white38,
-            ),
-            prefixIcon: Icon(
-              icon,
-              color: hasFocus ? Colors.red : Colors.white38,
-            ),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20.0,
-              vertical: 16.0,
-            ),
-          ),
-          onSubmitted: (_) {
-            if (nextNode != null) {
-              nextNode.requestFocus();
-            } else {
-              _handleAuth();
-            }
-          },
-        ),
       ),
     );
   }

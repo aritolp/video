@@ -3,14 +3,14 @@ import 'package:tvplus/models/lista_de_canales.dart';
 import 'package:tvplus/player_status.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
-import 'package:tvplus/globals/app_state.dart';
-import 'package:tvplus/main.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tvplus/main.dart';
 import 'package:go_router/go_router.dart';
-import 'package:tvplus/components/hls_video_player.dart';
+import 'package:tvplus/globals/app_state.dart';
 import 'package:tvplus/components/category_chip.dart';
 import 'package:tvplus/components/channel_card.dart';
+import 'package:tvplus/components/hls_video_player.dart';
 
 @NowaGenerated()
 class TvPlus extends StatefulWidget {
@@ -55,6 +55,12 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
 
   final FocusNode _logoutBtnNode = FocusNode();
 
+  String _searchQuery = '';
+
+  final FocusNode _searchNode = FocusNode();
+
+  final TextEditingController _searchController = TextEditingController();
+
   Color _getBadgeColor() {
     switch (playerStatus) {
       case PlayerStatus.connecting:
@@ -76,18 +82,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
       playerMessage = 'Recargando...';
       _refreshCount++;
     });
-  }
-
-  void _onChannelSelected(listaDeCanales channel) {
-    AppState.of(context, listen: false).setSelectedChannel(channel);
-    if (mounted) {
-      setState(() {
-        playerMessage = 'Cargando...';
-        playerStatus = PlayerStatus.connecting;
-      });
-    }
-    sharedPrefs.setInt('last_channel_id', channel.id ?? 0);
-    SupabaseService().updateLastChannel(channel.id ?? 0);
   }
 
   void _handleSystemUI(bool isLandscape) {
@@ -282,19 +276,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     );
   }
 
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    _playerNode.dispose();
-    _channelsTabNode.dispose();
-    _favoritesTabNode.dispose();
-    _aboutTabNode.dispose();
-    _favBtnNode.dispose();
-    _refreshBtnNode.dispose();
-    _logoutBtnNode.dispose();
-    super.dispose();
-  }
-
   Widget _buildChannelInfo(
     listaDeCanales currentChannel,
     Color favoriteColor,
@@ -451,256 +432,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final appState = AppState.of(context);
-    final favoriteColor = Colors.red.withValues(alpha: 0.7);
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        final bool isLandscape = orientation == Orientation.landscape;
-        _handleSystemUI(isLandscape);
-        return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) {
-              return;
-            }
-            if (_isFullScreen) {
-              setState(() => _isFullScreen = false);
-              return;
-            }
-            if (appState.isShowingAbout || appState.isShowingFavorites) {
-              appState.setShowingAbout(false);
-              appState.setShowingFavorites(false);
-            } else {
-              final bool? confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: Colors.grey[900],
-                  title: const Text(
-                    'Salir',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  content: const Text(
-                    '¿Quieres salir de la aplicación?',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('NO'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text(
-                        'SÍ',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                SystemNavigator.pop();
-              }
-            }
-          },
-          child: Scaffold(
-            backgroundColor: Colors.black,
-            body: SafeArea(
-              top: !isLandscape,
-              bottom: !isLandscape,
-              left: !isLandscape,
-              right: !isLandscape,
-              child: DataBuilder<List<listaDeCanales>>(
-                future: _channelsFuture,
-                builder: (context, channels) {
-                  if (channels == null || channels.isEmpty) {
-                    return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          CircularProgressIndicator(color: Colors.red),
-                          SizedBox(height: 16.0),
-                          Text(
-                            'Cargando canales...',
-                            style: TextStyle(color: Colors.white54),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  List<listaDeCanales> filteredChannels;
-                  if (appState.isShowingFavorites) {
-                    final favIds = appState.favoriteChannels ?? [];
-                    filteredChannels = channels
-                        .where((c) => favIds.contains(c.id))
-                        .toList();
-                  } else if (appState.selectedCategory != null) {
-                    filteredChannels = channels
-                        .where(
-                          (c) =>
-                              (c.categoria ?? 'General').toLowerCase() ==
-                              appState.selectedCategory?.toLowerCase(),
-                        )
-                        .toList();
-                  } else {
-                    filteredChannels = channels;
-                  }
-                  final currentChannel = channels.firstWhere(
-                    (c) => c.id == appState.selectedChannelId,
-                    orElse: () => channels[0],
-                  );
-                  final String? rawUrl = currentChannel.url_stream;
-                  final String streamUrl =
-                      (rawUrl != null && rawUrl!.isNotEmpty)
-                      ? rawUrl!
-                      : 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8';
-                  final String? logoUrl =
-                      (currentChannel.logo != null &&
-                          currentChannel.logo!.isNotEmpty)
-                      ? currentChannel.logo
-                      : null;
-                  final playerWidget = Focus(
-                    focusNode: _playerNode,
-                    onKeyEvent: (node, event) {
-                      if (event is KeyDownEvent &&
-                          (event.logicalKey == LogicalKeyboardKey.enter ||
-                              event.logicalKey == LogicalKeyboardKey.select)) {
-                        _toggleFullScreen();
-                        return KeyEventResult.handled;
-                      }
-                      return KeyEventResult.ignored;
-                    },
-                    child: GestureDetector(
-                      onTap: _toggleFullScreen,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: (_playerNode.hasFocus && !_isFullScreen)
-                            ? const EdgeInsets.all(4.0)
-                            : EdgeInsets.zero,
-                        decoration: BoxDecoration(
-                          color: (_playerNode.hasFocus && !_isFullScreen)
-                              ? Colors.red
-                              : Colors.transparent,
-                          borderRadius: (_isFullScreen || isLandscape)
-                              ? BorderRadius.zero
-                              : BorderRadius.circular(20.0),
-                        ),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: (_isFullScreen || isLandscape)
-                                  ? BorderRadius.zero
-                                  : BorderRadius.circular(16.0),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: HlsVideoPlayer(
-                              key: ValueKey('${streamUrl}_${_refreshCount}'),
-                              url: streamUrl,
-                              logoUrl: logoUrl,
-                              userAgent: currentChannel.userAgent,
-                              referer: currentChannel.referer,
-                              onStatusChanged: (status, message) {
-                                if (mounted) {
-                                  setState(() {
-                                    playerStatus = status;
-                                    playerMessage = message;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                  if (_isFullScreen) {
-                    return Container(
-                      color: Colors.black,
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: Center(child: playerWidget),
-                    );
-                  }
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth > 700) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: playerWidget,
-                                    ),
-                                    _buildChannelInfo(
-                                      currentChannel,
-                                      favoriteColor,
-                                      (appState.favoriteChannels ?? [])
-                                          .contains(currentChannel.id),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: _buildListSection(
-                                appState,
-                                channels,
-                                filteredChannels,
-                                currentChannel,
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                              ),
-                              child: playerWidget,
-                            ),
-                            _buildChannelInfo(
-                              currentChannel,
-                              favoriteColor,
-                              (appState.favoriteChannels ?? []).contains(
-                                currentChannel.id,
-                              ),
-                            ),
-                            const SizedBox(height: 24.0),
-                            Expanded(
-                              child: _buildListSection(
-                                appState,
-                                channels,
-                                filteredChannels,
-                                currentChannel,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildCategoryFilters(
     List<listaDeCanales> channels,
     AppState appState,
@@ -731,98 +462,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildListSection(
-    AppState appState,
-    List<listaDeCanales> channels,
-    List<listaDeCanales> filteredChannels,
-    listaDeCanales currentChannel,
-  ) {
-    final allChannelsForGrid = [...channels, ...appState.externalChannels];
-    List<listaDeCanales> finalFiltered;
-    if (appState.isShowingFavorites) {
-      final favIds = appState.favoriteChannels ?? [];
-      finalFiltered = allChannelsForGrid
-          .where((c) => favIds.contains(c.id))
-          .toList();
-    } else if (appState.selectedCategory != null) {
-      finalFiltered = allChannelsForGrid
-          .where(
-            (c) =>
-                (c.categoria ?? 'General').toLowerCase() ==
-                appState.selectedCategory?.toLowerCase(),
-          )
-          .toList();
-    } else {
-      finalFiltered = allChannelsForGrid;
-    }
-    final activeChannel = allChannelsForGrid.firstWhere(
-      (c) => c.id == appState.selectedChannelId,
-      orElse: () => allChannelsForGrid[0],
-    );
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildTabButton(
-                'CANALES',
-                (!appState.isShowingFavorites && !appState.isShowingAbout),
-                _channelsTabNode,
-                () => appState.setShowingAbout(false),
-              ),
-              _buildTabButton(
-                'FAVORITOS',
-                appState.isShowingFavorites,
-                _favoritesTabNode,
-                () => appState.setShowingFavorites(true),
-              ),
-              _buildTabButton(
-                'ACERCA DE..',
-                appState.isShowingAbout,
-                _aboutTabNode,
-                () => appState.setShowingAbout(true),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12.0),
-        if (appState.isShowingAbout)
-          Expanded(child: _buildAboutSection(appState))
-        else ...[
-          _buildCategoryFilters(channels, appState),
-          const SizedBox(height: 8.0),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20.0,
-                vertical: 10.0,
-              ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 1.5,
-                crossAxisSpacing: 16.0,
-                mainAxisSpacing: 16.0,
-              ),
-              itemCount: finalFiltered.length,
-              itemBuilder: (context, index) {
-                final channel = finalFiltered[index];
-                final isSelected = activeChannel.id == channel.id;
-                return ChannelCard(
-                  channel: channel,
-                  isCurrentlyPlaying: isSelected,
-                  onTap: () => _onChannelSelected(channel),
-                  autofocus: index == 0,
-                );
-              },
-            ),
-          ),
-        ],
-      ],
     );
   }
 
@@ -1012,6 +651,22 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     );
   }
 
+  void _onChannelSelected(listaDeCanales channel) {
+    AppState.of(context, listen: false).setSelectedChannel(channel);
+    if (mounted) {
+      setState(() {
+        playerMessage = 'Cargando...';
+        playerStatus = PlayerStatus.connecting;
+      });
+    }
+    if (channel.id != null && channel.id! > 0) {
+      sharedPrefs.setInt('last_channel_id', channel.id ?? 0);
+      SupabaseService().updateLastChannel(channel.id ?? 0);
+    } else if (channel.url_stream != null) {
+      sharedPrefs.setInt('last_channel_id', channel.id ?? -1);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1028,8 +683,399 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     _favBtnNode.addListener(() => setState(() {}));
     _refreshBtnNode.addListener(() => setState(() {}));
     _logoutBtnNode.addListener(() => setState(() {}));
+    _searchNode.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppState.of(context, listen: false).loadSavedExternalM3U();
     });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _playerNode.dispose();
+    _channelsTabNode.dispose();
+    _favoritesTabNode.dispose();
+    _aboutTabNode.dispose();
+    _favBtnNode.dispose();
+    _refreshBtnNode.dispose();
+    _logoutBtnNode.dispose();
+    _searchNode.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildListSection(
+    AppState appState,
+    List<listaDeCanales> channels,
+    List<listaDeCanales> filteredChannels,
+    listaDeCanales currentChannel,
+  ) {
+    final allChannelsForGrid = [...channels, ...appState.externalChannels];
+    List<listaDeCanales> finalFiltered;
+    if (appState.isShowingFavorites) {
+      final favIds = appState.favoriteChannels ?? [];
+      finalFiltered = allChannelsForGrid
+          .where((c) => favIds.contains(c.id))
+          .toList();
+    } else if (appState.selectedCategory != null) {
+      finalFiltered = allChannelsForGrid
+          .where(
+            (c) =>
+                (c.categoria ?? 'General').toLowerCase() ==
+                appState.selectedCategory?.toLowerCase(),
+          )
+          .toList();
+    } else {
+      finalFiltered = allChannelsForGrid;
+    }
+    if (_searchQuery.isNotEmpty) {
+      finalFiltered = finalFiltered
+          .where(
+            (c) => (c.nombre ?? '').toLowerCase().contains(
+              _searchQuery.toLowerCase(),
+            ),
+          )
+          .toList();
+    }
+    final activeChannel = appState.selectedChannel ?? currentChannel;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildTabButton(
+                'CANALES',
+                (!appState.isShowingFavorites && !appState.isShowingAbout),
+                _channelsTabNode,
+                () => appState.setShowingAbout(false),
+              ),
+              _buildTabButton(
+                'FAVORITOS',
+                appState.isShowingFavorites,
+                _favoritesTabNode,
+                () => appState.setShowingFavorites(true),
+              ),
+              _buildTabButton(
+                'ACERCA DE..',
+                appState.isShowingAbout,
+                _aboutTabNode,
+                () => appState.setShowingAbout(true),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        if (appState.isShowingAbout)
+          Expanded(child: _buildAboutSection(appState))
+        else ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 8.0,
+            ),
+            child: Focus(
+              focusNode: _searchNode,
+              child: Container(
+                height: 40.0,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8.0),
+                  border: Border.all(
+                    color: _searchNode.hasFocus ? Colors.red : Colors.white10,
+                  ),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: Colors.white, fontSize: 14.0),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar contenido...',
+                    hintStyle: const TextStyle(
+                      color: Colors.white24,
+                      fontSize: 13.0,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: _searchNode.hasFocus ? Colors.red : Colors.white38,
+                      size: 20.0,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10.0),
+                  ),
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                ),
+              ),
+            ),
+          ),
+          _buildCategoryFilters(channels, appState),
+          const SizedBox(height: 8.0),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 10.0,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1.5,
+                crossAxisSpacing: 16.0,
+                mainAxisSpacing: 16.0,
+              ),
+              itemCount: finalFiltered.length,
+              itemBuilder: (context, index) {
+                final channel = finalFiltered[index];
+                final isSelected = activeChannel.id == channel.id;
+                return ChannelCard(
+                  channel: channel,
+                  isCurrentlyPlaying: isSelected,
+                  onTap: () => _onChannelSelected(channel),
+                  autofocus: index == 0,
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = AppState.of(context);
+    final favoriteColor = Colors.red.withValues(alpha: 0.7);
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        final bool isLandscape = orientation == Orientation.landscape;
+        _handleSystemUI(isLandscape);
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) {
+              return;
+            }
+            if (_isFullScreen) {
+              setState(() => _isFullScreen = false);
+              return;
+            }
+            if (appState.isShowingAbout || appState.isShowingFavorites) {
+              appState.setShowingAbout(false);
+              appState.setShowingFavorites(false);
+            } else {
+              final bool? confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: Colors.grey[900],
+                  title: const Text(
+                    'Salir',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  content: const Text(
+                    '¿Quieres salir de la aplicación?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('NO'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        'SÍ',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                SystemNavigator.pop();
+              }
+            }
+          },
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: SafeArea(
+              top: !isLandscape,
+              bottom: !isLandscape,
+              left: !isLandscape,
+              right: !isLandscape,
+              child: DataBuilder<List<listaDeCanales>>(
+                future: _channelsFuture,
+                builder: (context, channels) {
+                  if (channels == null || channels.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          CircularProgressIndicator(color: Colors.red),
+                          SizedBox(height: 16.0),
+                          Text(
+                            'Cargando canales...',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  final allChannelsAvailable = [
+                    ...channels,
+                    ...appState.externalChannels,
+                  ];
+                  final currentChannel =
+                      appState.selectedChannel ??
+                      (allChannelsAvailable.firstWhere(
+                        (c) => c.id == appState.selectedChannelId,
+                        orElse: () => allChannelsAvailable[0],
+                      ));
+                  final String? rawUrl = currentChannel.url_stream;
+                  final String streamUrl =
+                      (rawUrl != null && rawUrl!.isNotEmpty)
+                      ? rawUrl!
+                      : 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8';
+                  final String? logoUrl =
+                      (currentChannel.logo != null &&
+                          currentChannel.logo!.isNotEmpty)
+                      ? currentChannel.logo
+                      : null;
+                  final playerWidget = Focus(
+                    focusNode: _playerNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          (event.logicalKey == LogicalKeyboardKey.enter ||
+                              event.logicalKey == LogicalKeyboardKey.select)) {
+                        _toggleFullScreen();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: GestureDetector(
+                      onTap: _toggleFullScreen,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: (_playerNode.hasFocus && !_isFullScreen)
+                            ? const EdgeInsets.all(4.0)
+                            : EdgeInsets.zero,
+                        decoration: BoxDecoration(
+                          color: (_playerNode.hasFocus && !_isFullScreen)
+                              ? Colors.red
+                              : Colors.transparent,
+                          borderRadius: (_isFullScreen || isLandscape)
+                              ? BorderRadius.zero
+                              : BorderRadius.circular(20.0),
+                        ),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: (_isFullScreen || isLandscape)
+                                  ? BorderRadius.zero
+                                  : BorderRadius.circular(16.0),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: HlsVideoPlayer(
+                              key: ValueKey('${streamUrl}_${_refreshCount}'),
+                              url: streamUrl,
+                              logoUrl: logoUrl,
+                              userAgent: currentChannel.userAgent,
+                              referer: currentChannel.referer,
+                              onStatusChanged: (status, message) {
+                                if (mounted) {
+                                  setState(() {
+                                    playerStatus = status;
+                                    playerMessage = message;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                  if (_isFullScreen) {
+                    return Container(
+                      color: Colors.black,
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: Center(child: playerWidget),
+                    );
+                  }
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth > 700) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: playerWidget,
+                                    ),
+                                    _buildChannelInfo(
+                                      currentChannel,
+                                      favoriteColor,
+                                      (appState.favoriteChannels ?? [])
+                                          .contains(currentChannel.id),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: _buildListSection(
+                                appState,
+                                channels,
+                                [],
+                                currentChannel,
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
+                              child: playerWidget,
+                            ),
+                            _buildChannelInfo(
+                              currentChannel,
+                              favoriteColor,
+                              (appState.favoriteChannels ?? []).contains(
+                                currentChannel.id,
+                              ),
+                            ),
+                            const SizedBox(height: 24.0),
+                            Expanded(
+                              child: _buildListSection(
+                                appState,
+                                channels,
+                                [],
+                                currentChannel,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
