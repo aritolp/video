@@ -371,42 +371,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     super.dispose();
   }
 
-  Widget _controlButton({
-    required FocusNode node,
-    required IconData icon,
-    required void Function() onPressed,
-    double size = 32,
-  }) {
-    return Focus(
-      focusNode: node,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          onPressed();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: node.hasFocus
-              ? Colors.white.withValues(alpha: 0.2)
-              : Colors.transparent,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: node.hasFocus ? Colors.white : Colors.transparent,
-            width: 2.0,
-          ),
-        ),
-        child: IconButton(
-          icon: Icon(icon, color: Colors.white, size: size),
-          onPressed: onPressed,
-        ),
-      ),
-    );
-  }
-
   Widget _buildSeekBar() {
     final duration = _videoPlayerController!.value.duration;
     final position = _videoPlayerController!.value.position;
@@ -471,6 +435,51 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
+  Widget _controlButton({
+    required FocusNode node,
+    required IconData icon,
+    required void Function() onPressed,
+    double size = 32,
+  }) {
+    return Focus(
+      focusNode: node,
+      descendantsAreFocusable: false,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          onPressed();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: node.hasFocus
+              ? Colors.white.withValues(alpha: 0.3)
+              : Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: node.hasFocus ? Colors.white : Colors.transparent,
+            width: 3.0,
+          ),
+          boxShadow: [
+            if (node.hasFocus)
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.2),
+                blurRadius: 10.0,
+                spreadRadius: 2.0,
+              ),
+          ],
+        ),
+        child: IconButton(
+          icon: Icon(icon, color: Colors.white, size: size),
+          onPressed: onPressed,
+        ),
+      ),
+    );
+  }
+
   Widget _buildCustomControls() {
     return Positioned.fill(
       child: AnimatedOpacity(
@@ -479,48 +488,50 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         child: IgnorePointer(
           ignoring: !_showControls,
           child: Container(
-            color: Colors.black45,
+            color: Colors.black54,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_isSeekableFormat)
+                FocusTraversalGroup(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_isSeekableFormat)
+                        _controlButton(
+                          node: _skipBackwardNode,
+                          icon: Icons.replay_10,
+                          onPressed: () => _skip(-10),
+                        ),
+                      const SizedBox(width: 32.0),
                       _controlButton(
-                        node: _skipBackwardNode,
-                        icon: Icons.replay_10,
-                        onPressed: () => _skip(-10),
+                        node: _playPauseNode,
+                        icon: _videoPlayerController!.value.isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 64.0,
+                        onPressed: () {
+                          setState(() {
+                            _videoPlayerController!.value.isPlaying
+                                ? _videoPlayerController?.pause()
+                                : _videoPlayerController?.play();
+                          });
+                          _startControlsTimer();
+                        },
                       ),
-                    const SizedBox(width: 32.0),
-                    _controlButton(
-                      node: _playPauseNode,
-                      icon: _videoPlayerController!.value.isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 64.0,
-                      onPressed: () {
-                        setState(() {
-                          _videoPlayerController!.value.isPlaying
-                              ? _videoPlayerController?.pause()
-                              : _videoPlayerController?.play();
-                        });
-                        _startControlsTimer();
-                      },
-                    ),
-                    const SizedBox(width: 32.0),
-                    if (_isSeekableFormat)
-                      _controlButton(
-                        node: _skipForwardNode,
-                        icon: Icons.forward_10,
-                        onPressed: () => _skip(10),
-                      ),
-                  ],
+                      const SizedBox(width: 32.0),
+                      if (_isSeekableFormat)
+                        _controlButton(
+                          node: _skipForwardNode,
+                          icon: Icons.forward_10,
+                          onPressed: () => _skip(10),
+                        ),
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 if (_isSeekableFormat) _buildSeekBar(),
-                const SizedBox(height: 20.0),
+                const SizedBox(height: 30.0),
               ],
             ),
           ),
@@ -534,94 +545,105 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _errorMessage != null ||
         (_videoPlayerController?.value.hasError ?? false);
     final String? logoUrl = widget.logoUrl;
-    return Focus(
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (!_showControls) {
-            _toggleControls();
-            _playPauseNode.requestFocus();
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.backspace ||
-              event.logicalKey == LogicalKeyboardKey.escape) {
-            if (_showControls) {
-              setState(() => _showControls = false);
+    return FocusScope(
+      child: Focus(
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (!_showControls &&
+                (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+                    event.logicalKey == LogicalKeyboardKey.arrowDown ||
+                    event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                    event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                    event.logicalKey == LogicalKeyboardKey.enter ||
+                    event.logicalKey == LogicalKeyboardKey.select)) {
+              setState(() {
+                _showControls = true;
+                _startControlsTimer();
+              });
+              _playPauseNode.requestFocus();
               return KeyEventResult.handled;
             }
+            if (event.logicalKey == LogicalKeyboardKey.backspace ||
+                event.logicalKey == LogicalKeyboardKey.escape) {
+              if (_showControls) {
+                setState(() => _showControls = false);
+                return KeyEventResult.handled;
+              }
+            }
           }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          if (logoUrl != null && (!_isInitialized || hasError))
-            Positioned.fill(
-              child: Image.network(
-                logoUrl,
-                fit: BoxFit.cover,
-                color: Colors.black.withValues(alpha: 0.5),
-                colorBlendMode: BlendMode.darken,
+          return KeyEventResult.ignored;
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            if (logoUrl != null && (!_isInitialized || hasError))
+              Positioned.fill(
+                child: Image.network(
+                  logoUrl,
+                  fit: BoxFit.cover,
+                  color: Colors.black.withValues(alpha: 0.5),
+                  colorBlendMode: BlendMode.darken,
+                ),
               ),
-            ),
-          if (_videoPlayerController != null && _isInitialized && !hasError)
-            GestureDetector(
-              onTap: _toggleControls,
-              onDoubleTapDown: (details) =>
-                  _handleDoubleTap(details.localPosition),
-              onVerticalDragUpdate: _onVerticalDragUpdate,
-              child: AspectRatio(
-                aspectRatio: 16 / 9,
-                child: VideoPlayer(_videoPlayerController!),
+            if (_videoPlayerController != null && _isInitialized && !hasError)
+              GestureDetector(
+                onTap: _toggleControls,
+                onDoubleTapDown: (details) =>
+                    _handleDoubleTap(details.localPosition),
+                onVerticalDragUpdate: _onVerticalDragUpdate,
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: VideoPlayer(_videoPlayerController!),
+                ),
               ),
-            ),
-          if (_showBrightnessIndicator)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Container(
-                  color: Colors.black.withValues(
-                    alpha: 1 - _brightness.clamp(0.2, 1),
+            if (_showBrightnessIndicator)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Container(
+                    color: Colors.black.withValues(
+                      alpha: 1 - _brightness.clamp(0.2, 1),
+                    ),
                   ),
                 ),
               ),
-            ),
-          if (_showSkipBackward && _isSeekableFormat)
-            Positioned(left: 40.0, child: _skipIndicator(Icons.replay_10)),
-          if (_showSkipForward && _isSeekableFormat)
-            Positioned(right: 40.0, child: _skipIndicator(Icons.forward_10)),
-          if (_showVolumeIndicator)
-            Positioned(
-              top: 40.0,
-              child: _buildGestureIndicator(Icons.volume_up, _volume),
-            ),
-          if (_showBrightnessIndicator)
-            Positioned(
-              top: 40.0,
-              child: _buildGestureIndicator(Icons.brightness_6, _brightness),
-            ),
-          if (_isInitialized && !hasError) _buildCustomControls(),
-          if (_currentStatus == PlayerStatus.retrying ||
-              _currentStatus == PlayerStatus.connecting)
-            Positioned(
-              bottom: 80.0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 6.0,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                child: Text(
-                  _currentStatus == PlayerStatus.retrying
-                      ? 'Reconectando...'
-                      : 'Conectando...',
-                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
+            if (_showSkipBackward && _isSeekableFormat)
+              Positioned(left: 40.0, child: _skipIndicator(Icons.replay_10)),
+            if (_showSkipForward && _isSeekableFormat)
+              Positioned(right: 40.0, child: _skipIndicator(Icons.forward_10)),
+            if (_showVolumeIndicator)
+              Positioned(
+                top: 40.0,
+                child: _buildGestureIndicator(Icons.volume_up, _volume),
+              ),
+            if (_showBrightnessIndicator)
+              Positioned(
+                top: 40.0,
+                child: _buildGestureIndicator(Icons.brightness_6, _brightness),
+              ),
+            if (_isInitialized && !hasError) _buildCustomControls(),
+            if (_currentStatus == PlayerStatus.retrying ||
+                _currentStatus == PlayerStatus.connecting)
+              Positioned(
+                bottom: 80.0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0,
+                    vertical: 6.0,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20.0),
+                  ),
+                  child: Text(
+                    _currentStatus == PlayerStatus.retrying
+                        ? 'Reconectando...'
+                        : 'Conectando...',
+                    style: const TextStyle(color: Colors.white, fontSize: 10.0),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1133,11 +1133,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                     _channelsTabNode.requestFocus();
                     return KeyEventResult.handled;
                   }
-                  if (event.logicalKey == LogicalKeyboardKey.space ||
-                      event.logicalKey == LogicalKeyboardKey.arrowLeft ||
-                      event.logicalKey == LogicalKeyboardKey.arrowRight) {
-                    return KeyEventResult.ignored;
-                  }
                 }
                 return KeyEventResult.ignored;
               },
@@ -1153,10 +1148,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                 child: TextField(
                   controller: _searchController,
                   style: const TextStyle(color: Colors.white, fontSize: 14.0),
-                  focusNode: FocusNode(
-                    canRequestFocus: false,
-                    skipTraversal: true,
-                  ),
                   decoration: InputDecoration(
                     hintText: 'Buscar contenido...',
                     hintStyle: const TextStyle(
