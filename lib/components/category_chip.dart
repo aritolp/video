@@ -50,6 +50,7 @@ class _CategoryChipState extends State<CategoryChip> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: widget.isSelected
                 ? Colors.red.withValues(alpha: 0.7)
@@ -76,6 +77,7 @@ class _CategoryChipState extends State<CategoryChip> {
           ),
           child: Text(
             widget.label.toUpperCase(),
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: (widget.isSelected || _isFocused)
                   ? Colors.white

@@ -371,63 +371,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     super.dispose();
   }
 
-  Widget _buildCustomControls() {
-    return Positioned.fill(
-      child: AnimatedOpacity(
-        opacity: _showControls ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 300),
-        child: IgnorePointer(
-          ignoring: !_showControls,
-          child: Container(
-            color: Colors.black26,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_isSeekableFormat)
-                      _controlButton(
-                        node: _skipBackwardNode,
-                        icon: Icons.replay_10,
-                        onPressed: () => _skip(-10),
-                      ),
-                    const SizedBox(width: 32.0),
-                    _controlButton(
-                      node: _playPauseNode,
-                      icon: _videoPlayerController!.value.isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 64.0,
-                      onPressed: () {
-                        setState(() {
-                          _videoPlayerController!.value.isPlaying
-                              ? _videoPlayerController?.pause()
-                              : _videoPlayerController?.play();
-                        });
-                        _startControlsTimer();
-                      },
-                    ),
-                    const SizedBox(width: 32.0),
-                    if (_isSeekableFormat)
-                      _controlButton(
-                        node: _skipForwardNode,
-                        icon: Icons.forward_10,
-                        onPressed: () => _skip(10),
-                      ),
-                  ],
-                ),
-                const Spacer(),
-                if (_isSeekableFormat) _buildSeekBar(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _controlButton({
     required FocusNode node,
     required IconData icon,
@@ -528,6 +471,64 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
+  Widget _buildCustomControls() {
+    return Positioned.fill(
+      child: AnimatedOpacity(
+        opacity: _showControls ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 300),
+        child: IgnorePointer(
+          ignoring: !_showControls,
+          child: Container(
+            color: Colors.black45,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isSeekableFormat)
+                      _controlButton(
+                        node: _skipBackwardNode,
+                        icon: Icons.replay_10,
+                        onPressed: () => _skip(-10),
+                      ),
+                    const SizedBox(width: 32.0),
+                    _controlButton(
+                      node: _playPauseNode,
+                      icon: _videoPlayerController!.value.isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 64.0,
+                      onPressed: () {
+                        setState(() {
+                          _videoPlayerController!.value.isPlaying
+                              ? _videoPlayerController?.pause()
+                              : _videoPlayerController?.play();
+                        });
+                        _startControlsTimer();
+                      },
+                    ),
+                    const SizedBox(width: 32.0),
+                    if (_isSeekableFormat)
+                      _controlButton(
+                        node: _skipForwardNode,
+                        icon: Icons.forward_10,
+                        onPressed: () => _skip(10),
+                      ),
+                  ],
+                ),
+                const Spacer(),
+                if (_isSeekableFormat) _buildSeekBar(),
+                const SizedBox(height: 20.0),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildNativePlayer() {
     final bool hasError =
         _errorMessage != null ||
@@ -535,10 +536,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     final String? logoUrl = widget.logoUrl;
     return Focus(
       onKeyEvent: (node, event) {
-        if (!_showControls && event is KeyDownEvent) {
-          _toggleControls();
-          _playPauseNode.requestFocus();
-          return KeyEventResult.handled;
+        if (event is KeyDownEvent) {
+          if (!_showControls) {
+            _toggleControls();
+            _playPauseNode.requestFocus();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.backspace ||
+              event.logicalKey == LogicalKeyboardKey.escape) {
+            if (_showControls) {
+              setState(() => _showControls = false);
+              return KeyEventResult.handled;
+            }
+          }
         }
         return KeyEventResult.ignored;
       },
