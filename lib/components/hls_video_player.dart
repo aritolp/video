@@ -61,6 +61,12 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   final FocusNode _codecNode = FocusNode();
 
+  final FocusNode _rewindNode = FocusNode();
+
+  final FocusNode _forwardNode = FocusNode();
+
+  final FocusNode _audioNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -136,7 +142,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     _currentCodecIndex = (_currentCodecIndex + 1) % _codecs.length;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Codec: ${_codecs[_currentCodecIndex]}'),
+        content: Text('Procesamiento: ${_codecs[_currentCodecIndex]}'),
         duration: const Duration(seconds: 2),
         backgroundColor: Colors.red.withValues(alpha: 0.8),
       ),
@@ -157,6 +163,45 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _videoPlayerController = null;
     }
     widget.onStatusChanged?.call(status, message);
+  }
+
+  String _formatDuration(Duration duration) {
+    @NowaGenerated()
+    String twoDigits(int n) {
+      return n.toString().padLeft(2, '0');
+    }
+
+    final minutes = twoDigits(duration.inMinutes.remainder(60).toInt());
+    final seconds = twoDigits(duration.inSeconds.remainder(60).toInt());
+    return '${twoDigits(duration.inHours)}:${minutes}:${seconds}';
+  }
+
+  Future<void> _seekRelative(Duration offset) async {
+    if (_videoPlayerController == null ||
+        !_videoPlayerController!.value.isInitialized) {
+      return;
+    }
+    final newPosition = _videoPlayerController!.value.position + offset;
+    final duration = _videoPlayerController!.value.duration;
+    if (newPosition < Duration.zero) {
+      await _videoPlayerController?.seekTo(Duration.zero);
+    } else if (newPosition > duration) {
+      await _videoPlayerController?.seekTo(duration);
+    } else {
+      await _videoPlayerController?.seekTo(newPosition);
+    }
+    _startControlsTimer();
+  }
+
+  Future<void> _showAudioMenu() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Cambiando pista de audio secundaria...'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.blue.withValues(alpha: 0.8),
+      ),
+    );
+    _initializePlayer();
   }
 
   @override
@@ -184,6 +229,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     WakelockPlus.disable();
     _playPauseNode.dispose();
     _codecNode.dispose();
+    _rewindNode.dispose();
+    _forwardNode.dispose();
+    _audioNode.dispose();
     super.dispose();
   }
 
@@ -198,13 +246,15 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent &&
             (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
+                event.logicalKey == LogicalKeyboardKey.select ||
+                event.logicalKey == LogicalKeyboardKey.accept)) {
           onPressed();
           return KeyEventResult.handled;
         }
         return KeyEventResult.ignored;
       },
       child: Container(
+        padding: const EdgeInsets.all(4.0),
         decoration: BoxDecoration(
           color: node.hasFocus
               ? Colors.white.withValues(alpha: 0.3)
@@ -237,6 +287,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _videoPlayerController?.value.position ?? Duration.zero;
     final Duration duration =
         _videoPlayerController?.value.duration ?? Duration.zero;
+    final bool isVod = duration > Duration.zero;
     return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _showControls ? 1.0 : 0.0,
@@ -248,34 +299,74 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             child: Column(
               children: [
                 const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _controlButton(
-                      node: _playPauseNode,
-                      icon: isPlaying
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 64.0,
-                      onPressed: () {
-                        setState(() {
-                          isPlaying
-                              ? _videoPlayerController?.pause()
-                              : _videoPlayerController?.play();
-                        });
-                        _startControlsTimer();
-                      },
-                    ),
-                    const SizedBox(width: 32.0),
-                    _controlButton(
-                      node: _codecNode,
-                      icon: Icons.settings_input_component_rounded,
-                      size: 48.0,
-                      onPressed: _switchCodec,
-                    ),
-                  ],
+                FocusTraversalGroup(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (isVod)
+                        _controlButton(
+                          node: _rewindNode,
+                          icon: Icons.replay_10_rounded,
+                          size: 40.0,
+                          onPressed: () =>
+                              _seekRelative(const Duration(seconds: -10)),
+                        ),
+                      const SizedBox(width: 20.0),
+                      _controlButton(
+                        node: _playPauseNode,
+                        icon: isPlaying
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        size: 64.0,
+                        onPressed: () {
+                          setState(() {
+                            isPlaying
+                                ? _videoPlayerController?.pause()
+                                : _videoPlayerController?.play();
+                          });
+                          _startControlsTimer();
+                        },
+                      ),
+                      const SizedBox(width: 20.0),
+                      if (isVod)
+                        _controlButton(
+                          node: _forwardNode,
+                          icon: Icons.forward_10_rounded,
+                          size: 40.0,
+                          onPressed: () =>
+                              _seekRelative(const Duration(seconds: 10)),
+                        ),
+                      const SizedBox(width: 32.0),
+                      _controlButton(
+                        node: _audioNode,
+                        icon: Icons.translate_rounded,
+                        size: 40.0,
+                        onPressed: _showAudioMenu,
+                      ),
+                      const SizedBox(width: 12.0),
+                      _controlButton(
+                        node: _codecNode,
+                        icon: Icons.settings_input_component_rounded,
+                        size: 40.0,
+                        onPressed: _switchCodec,
+                      ),
+                    ],
+                  ),
                 ),
                 const Spacer(),
+                if (isVod)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                    child: VideoProgressIndicator(
+                      _videoPlayerController!,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Colors.red,
+                        bufferedColor: Colors.white24,
+                        backgroundColor: Colors.white10,
+                      ),
+                    ),
+                  ),
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 40.0,
@@ -291,13 +382,33 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Text(
-                        _formatDuration(duration),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      if (isVod)
+                        Text(
+                          _formatDuration(duration),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8.0,
+                            vertical: 2.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          child: const Text(
+                            'EN VIVO',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.0,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -324,7 +435,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                   event.logicalKey == LogicalKeyboardKey.arrowLeft ||
                   event.logicalKey == LogicalKeyboardKey.arrowRight ||
                   event.logicalKey == LogicalKeyboardKey.enter ||
-                  event.logicalKey == LogicalKeyboardKey.select)) {
+                  event.logicalKey == LogicalKeyboardKey.select ||
+                  event.logicalKey == LogicalKeyboardKey.accept)) {
             _toggleControls();
             return KeyEventResult.handled;
           }
@@ -434,16 +546,5 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     } catch (e) {
       _handleError(e.toString());
     }
-  }
-
-  String _formatDuration(Duration duration) {
-    @NowaGenerated()
-    String twoDigits(int n) {
-      return n.toString().padLeft(2, '0');
-    }
-
-    final minutes = twoDigits(duration.inMinutes.remainder(60).toInt());
-    final seconds = twoDigits(duration.inSeconds.remainder(60).toInt());
-    return '${twoDigits(duration.inHours)}:${minutes}:${seconds}';
   }
 }

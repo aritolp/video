@@ -20,6 +20,7 @@ dependencies:
   wakelock_plus: ^1.2.1
   http: ^1.2.0
   better_player_plus: ^1.2.1
+  video_player_android: 0.0.16+3
 dev_dependencies:
   flutter_test:
     sdk: flutter

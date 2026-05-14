@@ -233,8 +233,9 @@ class _AuthPageState extends State<AuthPage> {
                       onKeyEvent: (node, event) {
                         if (event is KeyDownEvent &&
                             (event.logicalKey == LogicalKeyboardKey.enter ||
+                                event.logicalKey == LogicalKeyboardKey.select ||
                                 event.logicalKey ==
-                                    LogicalKeyboardKey.select)) {
+                                    LogicalKeyboardKey.accept)) {
                           _handleAuth();
                           return KeyEventResult.handled;
                         }
@@ -303,8 +304,9 @@ class _AuthPageState extends State<AuthPage> {
                       onKeyEvent: (node, event) {
                         if (event is KeyDownEvent &&
                             (event.logicalKey == LogicalKeyboardKey.enter ||
+                                event.logicalKey == LogicalKeyboardKey.select ||
                                 event.logicalKey ==
-                                    LogicalKeyboardKey.select)) {
+                                    LogicalKeyboardKey.accept)) {
                           setState(() {
                             _useCode = !_useCode;
                           });
@@ -359,7 +361,9 @@ class _AuthPageState extends State<AuthPage> {
                           if (event is KeyDownEvent &&
                               (event.logicalKey == LogicalKeyboardKey.enter ||
                                   event.logicalKey ==
-                                      LogicalKeyboardKey.select)) {
+                                      LogicalKeyboardKey.select ||
+                                  event.logicalKey ==
+                                      LogicalKeyboardKey.accept)) {
                             setState(() => _isLogin = !_isLogin);
                             return KeyEventResult.handled;
                           }
@@ -413,46 +417,60 @@ class _AuthPageState extends State<AuthPage> {
     FocusNode? nextNode,
   }) {
     final bool hasFocus = focusNode?.hasFocus ?? false;
-    return Container(
-      decoration: BoxDecoration(
-        color: hasFocus
-            ? Colors.red.withValues(alpha: 0.1)
-            : Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(
-          color: hasFocus ? Colors.white : Colors.white10,
-          width: hasFocus ? 3.0 : 1.0,
-        ),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: isPassword,
-        style: const TextStyle(color: Colors.white),
-        autofocus: false,
-        focusNode: focusNode,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: hasFocus ? Colors.white : Colors.white38,
-            fontWeight: hasFocus ? FontWeight.bold : FontWeight.normal,
-          ),
-          prefixIcon: Icon(
-            icon,
-            color: hasFocus ? Colors.white : Colors.white38,
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20.0,
-            vertical: 16.0,
+    return Shortcuts(
+      shortcuts: <LogicalKeySet, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent(),
+        LogicalKeySet(LogicalKeyboardKey.enter): const ActivateIntent(),
+        LogicalKeySet(LogicalKeyboardKey.accept): const ActivateIntent(),
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: hasFocus
+              ? Colors.red.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16.0),
+          border: Border.all(
+            color: hasFocus ? Colors.white : Colors.white10,
+            width: hasFocus ? 3.0 : 1.0,
           ),
         ),
-        onSubmitted: (value) {
-          if (nextNode != null) {
-            nextNode.requestFocus();
-          } else {
-            _handleAuth();
-          }
-        },
+        child: TextField(
+          controller: controller,
+          obscureText: isPassword,
+          style: const TextStyle(color: Colors.white),
+          autofocus: false,
+          focusNode: focusNode,
+          onEditingComplete: () {
+            if (nextNode != null) {
+              nextNode.requestFocus();
+            } else {
+              _handleAuth();
+            }
+          },
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: hasFocus ? Colors.white : Colors.white38,
+              fontWeight: hasFocus ? FontWeight.bold : FontWeight.normal,
+            ),
+            prefixIcon: Icon(
+              icon,
+              color: hasFocus ? Colors.white : Colors.white38,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 16.0,
+            ),
+          ),
+          onSubmitted: (value) {
+            if (nextNode != null) {
+              nextNode.requestFocus();
+            } else {
+              _handleAuth();
+            }
+          },
+        ),
       ),
     );
   }
