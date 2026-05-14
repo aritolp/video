@@ -758,11 +758,16 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                   final playerWidget = Focus(
                     focusNode: _playerNode,
                     onKeyEvent: (node, event) {
-                      if (event is KeyDownEvent &&
-                          (event.logicalKey == LogicalKeyboardKey.enter ||
-                              event.logicalKey == LogicalKeyboardKey.select)) {
-                        _toggleFullScreen();
-                        return KeyEventResult.handled;
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.enter ||
+                            event.logicalKey == LogicalKeyboardKey.select) {
+                          _toggleFullScreen();
+                          return KeyEventResult.handled;
+                        }
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                          _favBtnNode.requestFocus();
+                          return KeyEventResult.handled;
+                        }
                       }
                       return KeyEventResult.ignored;
                     },

@@ -53,13 +53,13 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Timer? _controlsTimer;
 
-  List<dynamic> _audioTracks = [];
+  final List<String> _codecs = ['Auto', 'Software', 'Hardware'];
 
-  int _currentAudioIndex = 0;
+  int _currentCodecIndex = 0;
 
   final FocusNode _playPauseNode = FocusNode();
 
-  final FocusNode _audioTrackNode = FocusNode();
+  final FocusNode _codecNode = FocusNode();
 
   @override
   void initState() {
@@ -83,12 +83,13 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     });
     if (_showControls) {
       _startControlsTimer();
+      _playPauseNode.requestFocus();
     }
   }
 
   void _startControlsTimer() {
     _controlsTimer?.cancel();
-    _controlsTimer = Timer(const Duration(seconds: 4), () {
+    _controlsTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
         setState(() {
           _showControls = false;
@@ -128,20 +129,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _retryCount = 0;
       }
     }
+    setState(() {});
   }
 
-  void _switchAudioTrack() {
-    if (_videoPlayerController == null || _audioTracks.length <= 1) {
-      return;
-    }
-    _currentAudioIndex = (_currentAudioIndex + 1) % _audioTracks.length;
+  void _switchCodec() {
+    _currentCodecIndex = (_currentCodecIndex + 1) % _codecs.length;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Pista de audio ${_currentAudioIndex + 1} activada'),
+        content: Text('Codec: ${_codecs[_currentCodecIndex]}'),
         duration: const Duration(seconds: 2),
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withValues(alpha: 0.8),
       ),
     );
+    _initializePlayer();
     _startControlsTimer();
   }
 
@@ -183,7 +183,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     _videoPlayerController?.dispose();
     WakelockPlus.disable();
     _playPauseNode.dispose();
-    _audioTrackNode.dispose();
+    _codecNode.dispose();
     super.dispose();
   }
 
@@ -195,7 +195,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }) {
     return Focus(
       focusNode: node,
-      descendantsAreFocusable: false,
       onKeyEvent: (node, event) {
         if (event is KeyDownEvent &&
             (event.logicalKey == LogicalKeyboardKey.enter ||
@@ -208,7 +207,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       child: Container(
         decoration: BoxDecoration(
           color: node.hasFocus
-              ? Colors.white.withOpacity(0.3)
+              ? Colors.white.withValues(alpha: 0.3)
               : Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
@@ -218,7 +217,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
           boxShadow: [
             if (node.hasFocus)
               BoxShadow(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 blurRadius: 10.0,
                 spreadRadius: 2.0,
               ),
@@ -234,6 +233,10 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Widget _buildCustomControls() {
     final bool isPlaying = _videoPlayerController?.value.isPlaying ?? false;
+    final Duration position =
+        _videoPlayerController?.value.position ?? Duration.zero;
+    final Duration duration =
+        _videoPlayerController?.value.duration ?? Duration.zero;
     return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _showControls ? 1.0 : 0.0,
@@ -241,44 +244,63 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         child: IgnorePointer(
           ignoring: !_showControls,
           child: Container(
-            color: Colors.black54,
+            color: Colors.black45,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 const Spacer(),
-                FocusTraversalGroup(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _controlButton(
+                      node: _playPauseNode,
+                      icon: isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 64.0,
+                      onPressed: () {
+                        setState(() {
+                          isPlaying
+                              ? _videoPlayerController?.pause()
+                              : _videoPlayerController?.play();
+                        });
+                        _startControlsTimer();
+                      },
+                    ),
+                    const SizedBox(width: 32.0),
+                    _controlButton(
+                      node: _codecNode,
+                      icon: Icons.settings_input_component_rounded,
+                      size: 48.0,
+                      onPressed: _switchCodec,
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40.0,
+                    vertical: 20.0,
+                  ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _controlButton(
-                        node: _playPauseNode,
-                        icon: isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 64.0,
-                        onPressed: () {
-                          setState(() {
-                            isPlaying
-                                ? _videoPlayerController?.pause()
-                                : _videoPlayerController?.play();
-                          });
-                          _startControlsTimer();
-                        },
-                      ),
-                      if (_audioTracks.length > 1) ...[
-                        const SizedBox(width: 32.0),
-                        _controlButton(
-                          node: _audioTrackNode,
-                          icon: Icons.audiotrack_rounded,
-                          size: 48.0,
-                          onPressed: _switchAudioTrack,
+                      Text(
+                        _formatDuration(position),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
+                      ),
+                      Text(
+                        _formatDuration(duration),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const Spacer(),
-                const SizedBox(height: 30.0),
               ],
             ),
           ),
@@ -292,78 +314,77 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _errorMessage != null ||
         (_videoPlayerController?.value.hasError ?? false);
     final String? logoUrl = widget.logoUrl;
-    return FocusScope(
-      child: Focus(
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent) {
-            if (!_showControls &&
-                (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-                    event.logicalKey == LogicalKeyboardKey.arrowDown ||
-                    event.logicalKey == LogicalKeyboardKey.arrowLeft ||
-                    event.logicalKey == LogicalKeyboardKey.arrowRight ||
-                    event.logicalKey == LogicalKeyboardKey.enter ||
-                    event.logicalKey == LogicalKeyboardKey.select)) {
-              setState(() {
-                _showControls = true;
-                _startControlsTimer();
-              });
-              _playPauseNode.requestFocus();
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (!_showControls &&
+              (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+                  event.logicalKey == LogicalKeyboardKey.arrowDown ||
+                  event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                  event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                  event.logicalKey == LogicalKeyboardKey.enter ||
+                  event.logicalKey == LogicalKeyboardKey.select)) {
+            _toggleControls();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.backspace ||
+              event.logicalKey == LogicalKeyboardKey.escape ||
+              event.logicalKey == LogicalKeyboardKey.goBack) {
+            if (_showControls) {
+              setState(() => _showControls = false);
               return KeyEventResult.handled;
             }
-            if (event.logicalKey == LogicalKeyboardKey.backspace ||
-                event.logicalKey == LogicalKeyboardKey.escape) {
-              if (_showControls) {
-                setState(() => _showControls = false);
-                return KeyEventResult.handled;
-              }
-            }
+            return KeyEventResult.ignored;
           }
-          return KeyEventResult.ignored;
-        },
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            if (logoUrl != null && (!_isInitialized || hasError))
-              Positioned.fill(
-                child: Image.network(
-                  logoUrl,
-                  fit: BoxFit.cover,
-                  color: Colors.black.withOpacity(0.5),
-                  colorBlendMode: BlendMode.darken,
-                ),
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (logoUrl != null && (!_isInitialized || hasError))
+            Positioned.fill(
+              child: Image.network(
+                logoUrl,
+                fit: BoxFit.cover,
+                color: Colors.black.withValues(alpha: 0.5),
+                colorBlendMode: BlendMode.darken,
               ),
-            if (_videoPlayerController != null && _isInitialized && !hasError)
-              GestureDetector(
-                onTap: _toggleControls,
+            ),
+          if (_videoPlayerController != null && _isInitialized && !hasError)
+            GestureDetector(
+              onTap: _toggleControls,
+              child: Center(
                 child: AspectRatio(
-                  aspectRatio: 16 / 9,
+                  aspectRatio: _videoPlayerController!.value.aspectRatio,
                   child: VideoPlayer(_videoPlayerController!),
                 ),
               ),
-            if (_isInitialized && !hasError) _buildCustomControls(),
-            if (_currentStatus == PlayerStatus.retrying ||
-                _currentStatus == PlayerStatus.connecting)
-              Positioned(
-                bottom: 80.0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12.0,
-                    vertical: 6.0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20.0),
-                  ),
-                  child: Text(
-                    _currentStatus == PlayerStatus.retrying
-                        ? 'Reconectando...'
-                        : 'Conectando...',
-                    style: const TextStyle(color: Colors.white, fontSize: 10.0),
-                  ),
+            ),
+          if (_isInitialized && !hasError) _buildCustomControls(),
+          if (_currentStatus == PlayerStatus.retrying ||
+              _currentStatus == PlayerStatus.connecting)
+            Positioned(
+              bottom: 80.0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: 6.0,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+                child: Text(
+                  _currentStatus == PlayerStatus.retrying
+                      ? 'Reconectando...'
+                      : 'Conectando...',
+                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
@@ -375,10 +396,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     setState(() {
       _isInitialized = false;
       _errorMessage = null;
-      _audioTracks = [];
-      _currentAudioIndex = 0;
     });
     try {
+      final Duration? lastPosition = _videoPlayerController?.value.position;
       _videoPlayerController?.dispose();
       await WakelockPlus.enable();
       final Map<String, String> headers = {
@@ -399,6 +419,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       );
       await _videoPlayerController?.initialize();
       _videoPlayerController?.addListener(_listener);
+      if (lastPosition != null && lastPosition! > Duration.zero) {
+        await _videoPlayerController?.seekTo(lastPosition);
+      }
       _videoPlayerController?.play();
       if (mounted) {
         setState(() {
@@ -406,9 +429,21 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
           _showControls = true;
         });
         _startControlsTimer();
+        _playPauseNode.requestFocus();
       }
     } catch (e) {
       _handleError(e.toString());
     }
+  }
+
+  String _formatDuration(Duration duration) {
+    @NowaGenerated()
+    String twoDigits(int n) {
+      return n.toString().padLeft(2, '0');
+    }
+
+    final minutes = twoDigits(duration.inMinutes.remainder(60).toInt());
+    final seconds = twoDigits(duration.inSeconds.remainder(60).toInt());
+    return '${twoDigits(duration.inHours)}:${minutes}:${seconds}';
   }
 }
