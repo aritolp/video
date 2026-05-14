@@ -3,8 +3,8 @@ import 'package:video_player/video_player.dart';
 import 'package:tvplus/player_status.dart';
 import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:tvplus/components/web_video_player.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter/services.dart';
 
 @NowaGenerated()
@@ -112,52 +112,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       });
     } else {
       _updateStatus(PlayerStatus.webFallback, 'Modo Alternativo');
-    }
-  }
-
-  Future<void> _initializePlayer() async {
-    if (_currentStatus == PlayerStatus.webFallback) {
-      return;
-    }
-    setState(() {
-      _isInitialized = false;
-      _errorMessage = null;
-      _audioTracks = [];
-      _currentAudioIndex = 0;
-    });
-    try {
-      _videoPlayerController?.dispose();
-      await WakelockPlus.enable();
-      final Map<String, String> headers = {
-        'User-Agent':
-            widget.userAgent ??
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
-      };
-      if (widget.referer != null && widget.referer!.isNotEmpty) {
-        headers['Referer'] = widget.referer;
-      }
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.url),
-        httpHeaders: headers,
-        videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),
-      );
-      await _videoPlayerController?.initialize();
-      _videoPlayerController?.addListener(_listener);
-      _videoPlayerController?.play();
-      try {} catch (e) {
-        debugPrint('Audio track detection not supported: ${e}');
-      }
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-          _showControls = true;
-        });
-        _startControlsTimer();
-      }
-    } catch (e) {
-      _handleError(e.toString());
     }
   }
 
@@ -412,5 +366,49 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         ),
       ),
     );
+  }
+
+  Future<void> _initializePlayer() async {
+    if (_currentStatus == PlayerStatus.webFallback) {
+      return;
+    }
+    setState(() {
+      _isInitialized = false;
+      _errorMessage = null;
+      _audioTracks = [];
+      _currentAudioIndex = 0;
+    });
+    try {
+      _videoPlayerController?.dispose();
+      await WakelockPlus.enable();
+      final Map<String, String> headers = {
+        'User-Agent':
+            widget.userAgent ??
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+      };
+      final String? currentReferer = widget.referer;
+      if (currentReferer != null && currentReferer!.isNotEmpty) {
+        headers['Referer'] = currentReferer;
+      }
+      _videoPlayerController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.url),
+        httpHeaders: headers,
+        videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),
+      );
+      await _videoPlayerController?.initialize();
+      _videoPlayerController?.addListener(_listener);
+      _videoPlayerController?.play();
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _showControls = true;
+        });
+        _startControlsTimer();
+      }
+    } catch (e) {
+      _handleError(e.toString());
+    }
   }
 }
