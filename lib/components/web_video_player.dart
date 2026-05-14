@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' as webview;
 
 @NowaGenerated()
@@ -30,8 +31,30 @@ class WebVideoPlayer extends StatefulWidget {
 @NowaGenerated()
 class _WebVideoPlayerState extends State<WebVideoPlayer> {
   @override
+  void initState() {
+    super.initState();
+    _keepScreenOn();
+  }
+
+  @override
   void didUpdateWidget(WebVideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _keepScreenOn();
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Future<void> _keepScreenOn() async {
+    try {
+      await WakelockPlus.enable();
+    } catch (e) {
+      debugPrint('Error enabling wakelock: ${e}');
+    }
   }
 
   @override

@@ -46,27 +46,6 @@ class _AuthPageState extends State<AuthPage> {
   final FocusNode _toggleModeNode = FocusNode();
 
   @override
-  void initState() {
-    super.initState();
-    _emailNode.addListener(() => setState(() {}));
-    _passwordNode.addListener(() => setState(() {}));
-    _nombreNode.addListener(() => setState(() {}));
-    _codeNode.addListener(() => setState(() {}));
-    _submitNode.addListener(() => setState(() {}));
-    _toggleCodeNode.addListener(() => setState(() {}));
-    _toggleModeNode.addListener(() => setState(() {}));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_useCode) {
-        _codeNode.requestFocus();
-      } else if (!_isLogin) {
-        _nombreNode.requestFocus();
-      } else {
-        _emailNode.requestFocus();
-      }
-    });
-  }
-
-  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -450,15 +429,7 @@ class _AuthPageState extends State<AuthPage> {
           }
           setState(() {});
         },
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent) {
-            if (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select) {
-              return KeyEventResult.ignored;
-            }
-          }
-          return KeyEventResult.ignored;
-        },
+        onKeyEvent: (node, event) => KeyEventResult.ignored,
         child: Container(
           decoration: BoxDecoration(
             color: hasFocus
@@ -474,6 +445,8 @@ class _AuthPageState extends State<AuthPage> {
             controller: controller,
             obscureText: isPassword,
             style: const TextStyle(color: Colors.white),
+            autofocus: false,
+            focusNode: null,
             decoration: InputDecoration(
               labelText: label,
               labelStyle: TextStyle(
@@ -501,5 +474,32 @@ class _AuthPageState extends State<AuthPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    _emailNode.addListener(() => setState(() {}));
+    _passwordNode.addListener(() => setState(() {}));
+    _nombreNode.addListener(() => setState(() {}));
+    _codeNode.addListener(() => setState(() {}));
+    _submitNode.addListener(() => setState(() {}));
+    _toggleCodeNode.addListener(() => setState(() {}));
+    _toggleModeNode.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_useCode) {
+        _codeNode.requestFocus();
+      } else if (!_isLogin) {
+        _nombreNode.requestFocus();
+      } else {
+        _emailNode.requestFocus();
+      }
+    });
   }
 }

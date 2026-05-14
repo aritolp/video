@@ -1113,15 +1113,11 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
             ],
           ),
         ),
-        const SizedBox(height: 12.0),
         if (appState.isShowingAbout)
           Expanded(child: _buildAboutSection(appState))
         else ...[
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20.0,
-              vertical: 8.0,
-            ),
+            padding: const EdgeInsets.fromLTRB(20.0, 4.0, 20.0, 16.0),
             child: Focus(
               focusNode: _searchNode,
               onKeyEvent: (node, event) {
@@ -1137,32 +1133,48 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                 return KeyEventResult.ignored;
               },
               child: Container(
-                height: 40.0,
+                height: 52.0,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8.0),
+                  borderRadius: BorderRadius.circular(16.0),
                   border: Border.all(
                     color: _searchNode.hasFocus ? Colors.red : Colors.white10,
+                    width: 2.0,
                   ),
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  style: const TextStyle(color: Colors.white, fontSize: 14.0),
-                  decoration: InputDecoration(
-                    hintText: 'Buscar contenido...',
-                    hintStyle: const TextStyle(
-                      color: Colors.white24,
-                      fontSize: 13.0,
+                child: Center(
+                  child: TextField(
+                    controller: _searchController,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.0,
+                      height: 1.2,
                     ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: _searchNode.hasFocus ? Colors.red : Colors.white38,
-                      size: 20.0,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar contenido...',
+                      hintStyle: const TextStyle(
+                        color: Colors.white24,
+                        fontSize: 14.0,
+                      ),
+                      prefixIcon: Padding(
+                        padding: const EdgeInsets.only(top: 2.0),
+                        child: Icon(
+                          Icons.search,
+                          color: _searchNode.hasFocus
+                              ? Colors.red
+                              : Colors.white38,
+                          size: 22.0,
+                        ),
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16.0,
+                      ),
+                      isDense: false,
                     ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10.0),
+                    onChanged: (value) => setState(() => _searchQuery = value),
                   ),
-                  onChanged: (value) => setState(() => _searchQuery = value),
                 ),
               ),
             ),

@@ -19,6 +19,7 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   wakelock_plus: ^1.2.1
   http: ^1.2.0
+  better_player_plus: 6.0.0-beta.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

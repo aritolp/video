@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
 import 'package:tvplus/player_status.dart';
 import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
@@ -40,8 +39,6 @@ class HlsVideoPlayer extends StatefulWidget {
 class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   VideoPlayerController? _videoPlayerController;
 
-  ChewieController? _chewieController;
-
   bool _isInitialized = false;
 
   String? _errorMessage;
@@ -56,35 +53,13 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Timer? _controlsTimer;
 
-  bool _showSkipForward = false;
+  List<dynamic> _audioTracks = [];
 
-  bool _showSkipBackward = false;
-
-  double _volume = 1.0;
-
-  double _brightness = 0.5;
-
-  bool _showVolumeIndicator = false;
-
-  bool _showBrightnessIndicator = false;
-
-  Timer? _indicatorTimer;
-
-  bool get _isSeekableFormat {
-    final url = widget.url.toLowerCase();
-    return url.contains('.mp4') ||
-        url.contains('.mkv') ||
-        url.contains('.webm') ||
-        url.contains('.mov');
-  }
+  int _currentAudioIndex = 0;
 
   final FocusNode _playPauseNode = FocusNode();
 
-  final FocusNode _skipForwardNode = FocusNode();
-
-  final FocusNode _skipBackwardNode = FocusNode();
-
-  final FocusNode _seekBarNode = FocusNode();
+  final FocusNode _audioTrackNode = FocusNode();
 
   @override
   void initState() {
@@ -100,17 +75,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _currentStatus = PlayerStatus.connecting;
       _initializePlayer();
     }
-  }
-
-  void _skip(int seconds) {
-    if (_videoPlayerController == null ||
-        !_videoPlayerController!.value.isInitialized ||
-        !_isSeekableFormat) {
-      return;
-    }
-    final newPosition =
-        _videoPlayerController!.value.position + Duration(seconds: seconds);
-    _videoPlayerController?.seekTo(newPosition);
   }
 
   void _toggleControls() {
@@ -131,41 +95,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         });
       }
     });
-  }
-
-  void _handleDoubleTap(Offset position) {
-    if (!_isSeekableFormat) {
-      return;
-    }
-    final screenWidth = MediaQuery.of(context).size.width;
-    if (position.dx < screenWidth / 2) {
-      _skip(-10);
-      setState(() => _showSkipBackward = true);
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          setState(() => _showSkipBackward = false);
-        }
-      });
-    } else {
-      _skip(10);
-      setState(() => _showSkipForward = true);
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          setState(() => _showSkipForward = false);
-        }
-      });
-    }
-  }
-
-  Widget _skipIndicator(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: const BoxDecoration(
-        color: Colors.black45,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: Colors.white, size: 40.0),
-    );
   }
 
   void _handleError(String error) {
@@ -193,12 +122,11 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     setState(() {
       _isInitialized = false;
       _errorMessage = null;
+      _audioTracks = [];
+      _currentAudioIndex = 0;
     });
     try {
-      _chewieController?.dispose();
       _videoPlayerController?.dispose();
-      _chewieController = null;
-      _videoPlayerController = null;
       await WakelockPlus.enable();
       final Map<String, String> headers = {
         'User-Agent':
@@ -207,28 +135,20 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         'Accept': '*/*',
         'Connection': 'keep-alive',
       };
-      final Uri uri = Uri.parse(widget.url);
-      final String? currentReferer = widget.referer;
-      if (currentReferer != null && currentReferer!.isNotEmpty) {
-        headers['Referer'] = currentReferer;
+      if (widget.referer != null && widget.referer!.isNotEmpty) {
+        headers['Referer'] = widget.referer;
       }
       _videoPlayerController = VideoPlayerController.networkUrl(
-        uri,
+        Uri.parse(widget.url),
         httpHeaders: headers,
         videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),
       );
       await _videoPlayerController?.initialize();
-      if (_videoPlayerController != null) {
-        _chewieController = ChewieController(
-          videoPlayerController: _videoPlayerController!,
-          aspectRatio: 16 / 9,
-          autoPlay: true,
-          isLive: !_isSeekableFormat,
-          showControls: false,
-        );
-        _videoPlayerController?.play();
-      }
       _videoPlayerController?.addListener(_listener);
+      _videoPlayerController?.play();
+      try {} catch (e) {
+        debugPrint('Audio track detection not supported: ${e}');
+      }
       if (mounted) {
         setState(() {
           _isInitialized = true;
@@ -241,6 +161,36 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     }
   }
 
+  void _listener() {
+    if (!mounted || _videoPlayerController == null) {
+      return;
+    }
+    final value = _videoPlayerController?.value;
+    if (value!.hasError) {
+      _handleError(value?.errorDescription ?? 'Error desconocido');
+    } else if (value!.isPlaying) {
+      if (_currentStatus != PlayerStatus.playing) {
+        _updateStatus(PlayerStatus.playing, 'En vivo');
+        _retryCount = 0;
+      }
+    }
+  }
+
+  void _switchAudioTrack() {
+    if (_videoPlayerController == null || _audioTracks.length <= 1) {
+      return;
+    }
+    _currentAudioIndex = (_currentAudioIndex + 1) % _audioTracks.length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Pista de audio ${_currentAudioIndex + 1} activada'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.red.withOpacity(0.8),
+      ),
+    );
+    _startControlsTimer();
+  }
+
   void _updateStatus(PlayerStatus status, String message) {
     if (!mounted) {
       return;
@@ -249,41 +199,10 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _currentStatus = status;
     });
     if (status == PlayerStatus.webFallback) {
-      _videoPlayerController?.pause();
       _videoPlayerController?.dispose();
       _videoPlayerController = null;
-      _chewieController?.dispose();
-      _chewieController = null;
     }
     widget.onStatusChanged?.call(status, message);
-  }
-
-  void _listener() {
-    if (!mounted || _videoPlayerController == null) {
-      return;
-    }
-    final value = _videoPlayerController?.value;
-    if (value!.hasError) {
-      _handleError(value?.errorDescription ?? 'Error desconocido');
-    } else if (value!.isBuffering) {
-    } else if (value!.isPlaying) {
-      if (_currentStatus != PlayerStatus.playing) {
-        _updateStatus(
-          PlayerStatus.playing,
-          _isSeekableFormat ? 'Video' : 'En vivo',
-        );
-        _retryCount = 0;
-      }
-    } else if (_isInitialized &&
-        !value!.isPlaying &&
-        !value!.isBuffering &&
-        _currentStatus == PlayerStatus.playing &&
-        !_isSeekableFormat) {
-      _handleError('Playback stalled');
-    }
-    if (_isSeekableFormat) {
-      setState(() {});
-    }
   }
 
   @override
@@ -302,137 +221,16 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
-  void _onVerticalDragUpdate(DragUpdateDetails details) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final delta = details.primaryDelta! / -200;
-    if (details.localPosition.dx < screenWidth / 2) {
-      setState(() {
-        _brightness = (_brightness + delta).clamp(0, 1);
-        _showBrightnessIndicator = true;
-        _showVolumeIndicator = false;
-      });
-    } else {
-      setState(() {
-        _volume = (_volume + delta).clamp(0, 1);
-        _videoPlayerController?.setVolume(_volume);
-        _showVolumeIndicator = true;
-        _showBrightnessIndicator = false;
-      });
-    }
-    _indicatorTimer?.cancel();
-    _indicatorTimer = Timer(const Duration(milliseconds: 1000), () {
-      if (mounted) {
-        setState(() {
-          _showVolumeIndicator = false;
-          _showBrightnessIndicator = false;
-        });
-      }
-    });
-  }
-
-  Widget _buildGestureIndicator(IconData icon, double value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.black54,
-        borderRadius: BorderRadius.circular(20.0),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 20.0),
-          const SizedBox(width: 8.0),
-          SizedBox(
-            width: 100.0,
-            height: 4.0,
-            child: LinearProgressIndicator(
-              value: value,
-              backgroundColor: Colors.white24,
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _retryTimer?.cancel();
     _controlsTimer?.cancel();
     _videoPlayerController?.removeListener(_listener);
     _videoPlayerController?.dispose();
-    _chewieController?.dispose();
     WakelockPlus.disable();
     _playPauseNode.dispose();
-    _skipForwardNode.dispose();
-    _skipBackwardNode.dispose();
-    _seekBarNode.dispose();
+    _audioTrackNode.dispose();
     super.dispose();
-  }
-
-  Widget _buildSeekBar() {
-    final duration = _videoPlayerController!.value.duration;
-    final position = _videoPlayerController!.value.position;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Focus(
-        focusNode: _seekBarNode,
-        onKeyEvent: (node, event) {
-          if (event is KeyDownEvent) {
-            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-              _skip(-5);
-              return KeyEventResult.handled;
-            } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-              _skip(5);
-              return KeyEventResult.handled;
-            }
-          }
-          return KeyEventResult.ignored;
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: _seekBarNode.hasFocus ? Colors.white : Colors.transparent,
-              width: 1.0,
-            ),
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4.0,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 6.0,
-                    ),
-                    activeTrackColor: Colors.red,
-                    inactiveTrackColor: Colors.white24,
-                    thumbColor: Colors.red,
-                  ),
-                  child: Slider(
-                    value: position.inSeconds.toDouble().clamp(
-                      0,
-                      duration.inSeconds.toDouble(),
-                    ),
-                    max: duration.inSeconds.toDouble() > 0
-                        ? duration.inSeconds.toDouble()
-                        : 1.0,
-                    onChanged: (value) {
-                      _videoPlayerController?.seekTo(
-                        Duration(seconds: value.toInt()),
-                      );
-                      _startControlsTimer();
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _controlButton({
@@ -456,7 +254,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       child: Container(
         decoration: BoxDecoration(
           color: node.hasFocus
-              ? Colors.white.withValues(alpha: 0.3)
+              ? Colors.white.withOpacity(0.3)
               : Colors.transparent,
           shape: BoxShape.circle,
           border: Border.all(
@@ -466,7 +264,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
           boxShadow: [
             if (node.hasFocus)
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.white.withOpacity(0.2),
                 blurRadius: 10.0,
                 spreadRadius: 2.0,
               ),
@@ -481,6 +279,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   Widget _buildCustomControls() {
+    final bool isPlaying = _videoPlayerController?.value.isPlaying ?? false;
     return Positioned.fill(
       child: AnimatedOpacity(
         opacity: _showControls ? 1.0 : 0.0,
@@ -497,40 +296,34 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (_isSeekableFormat)
-                        _controlButton(
-                          node: _skipBackwardNode,
-                          icon: Icons.replay_10,
-                          onPressed: () => _skip(-10),
-                        ),
-                      const SizedBox(width: 32.0),
                       _controlButton(
                         node: _playPauseNode,
-                        icon: _videoPlayerController!.value.isPlaying
+                        icon: isPlaying
                             ? Icons.pause_rounded
                             : Icons.play_arrow_rounded,
                         size: 64.0,
                         onPressed: () {
                           setState(() {
-                            _videoPlayerController!.value.isPlaying
+                            isPlaying
                                 ? _videoPlayerController?.pause()
                                 : _videoPlayerController?.play();
                           });
                           _startControlsTimer();
                         },
                       ),
-                      const SizedBox(width: 32.0),
-                      if (_isSeekableFormat)
+                      if (_audioTracks.length > 1) ...[
+                        const SizedBox(width: 32.0),
                         _controlButton(
-                          node: _skipForwardNode,
-                          icon: Icons.forward_10,
-                          onPressed: () => _skip(10),
+                          node: _audioTrackNode,
+                          icon: Icons.audiotrack_rounded,
+                          size: 48.0,
+                          onPressed: _switchAudioTrack,
                         ),
+                      ],
                     ],
                   ),
                 ),
                 const Spacer(),
-                if (_isSeekableFormat) _buildSeekBar(),
                 const SizedBox(height: 30.0),
               ],
             ),
@@ -581,44 +374,17 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                 child: Image.network(
                   logoUrl,
                   fit: BoxFit.cover,
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: Colors.black.withOpacity(0.5),
                   colorBlendMode: BlendMode.darken,
                 ),
               ),
             if (_videoPlayerController != null && _isInitialized && !hasError)
               GestureDetector(
                 onTap: _toggleControls,
-                onDoubleTapDown: (details) =>
-                    _handleDoubleTap(details.localPosition),
-                onVerticalDragUpdate: _onVerticalDragUpdate,
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: VideoPlayer(_videoPlayerController!),
                 ),
-              ),
-            if (_showBrightnessIndicator)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: Container(
-                    color: Colors.black.withValues(
-                      alpha: 1 - _brightness.clamp(0.2, 1),
-                    ),
-                  ),
-                ),
-              ),
-            if (_showSkipBackward && _isSeekableFormat)
-              Positioned(left: 40.0, child: _skipIndicator(Icons.replay_10)),
-            if (_showSkipForward && _isSeekableFormat)
-              Positioned(right: 40.0, child: _skipIndicator(Icons.forward_10)),
-            if (_showVolumeIndicator)
-              Positioned(
-                top: 40.0,
-                child: _buildGestureIndicator(Icons.volume_up, _volume),
-              ),
-            if (_showBrightnessIndicator)
-              Positioned(
-                top: 40.0,
-                child: _buildGestureIndicator(Icons.brightness_6, _brightness),
               ),
             if (_isInitialized && !hasError) _buildCustomControls(),
             if (_currentStatus == PlayerStatus.retrying ||
