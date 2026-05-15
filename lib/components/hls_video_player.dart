@@ -6,6 +6,8 @@ import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:tvplus/components/web_video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter/services.dart';
+import 'package:screen_brightness/screen_brightness.dart';
+import 'package:volume_controller/volume_controller.dart';
 
 @NowaGenerated()
 class HlsVideoPlayer extends StatefulWidget {
@@ -67,6 +69,16 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   final FocusNode _audioNode = FocusNode();
 
+  double _brightness = 0.5;
+
+  double _volume = 0.5;
+
+  bool _showVolumeIndicator = false;
+
+  bool _showBrightnessIndicator = false;
+
+  Timer? _overlayTimer;
+
   @override
   void initState() {
     super.initState();
@@ -80,16 +92,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _retryCount = 0;
       _currentStatus = PlayerStatus.connecting;
       _initializePlayer();
-    }
-  }
-
-  void _toggleControls() {
-    setState(() {
-      _showControls = !_showControls;
-    });
-    if (_showControls) {
-      _startControlsTimer();
-      _playPauseNode.requestFocus();
     }
   }
 
@@ -281,226 +283,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
-  Widget _buildCustomControls() {
-    final bool isPlaying = _videoPlayerController?.value.isPlaying ?? false;
-    final Duration position =
-        _videoPlayerController?.value.position ?? Duration.zero;
-    final Duration duration =
-        _videoPlayerController?.value.duration ?? Duration.zero;
-    final bool isVod = duration > Duration.zero;
-    return Positioned.fill(
-      child: AnimatedOpacity(
-        opacity: _showControls ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 300),
-        child: IgnorePointer(
-          ignoring: !_showControls,
-          child: Container(
-            color: Colors.black45,
-            child: Column(
-              children: [
-                const Spacer(),
-                FocusTraversalGroup(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (isVod)
-                        _controlButton(
-                          node: _rewindNode,
-                          icon: Icons.replay_10_rounded,
-                          size: 40.0,
-                          onPressed: () =>
-                              _seekRelative(const Duration(seconds: -10)),
-                        ),
-                      const SizedBox(width: 20.0),
-                      _controlButton(
-                        node: _playPauseNode,
-                        icon: isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        size: 64.0,
-                        onPressed: () {
-                          setState(() {
-                            isPlaying
-                                ? _videoPlayerController?.pause()
-                                : _videoPlayerController?.play();
-                          });
-                          _startControlsTimer();
-                        },
-                      ),
-                      const SizedBox(width: 20.0),
-                      if (isVod)
-                        _controlButton(
-                          node: _forwardNode,
-                          icon: Icons.forward_10_rounded,
-                          size: 40.0,
-                          onPressed: () =>
-                              _seekRelative(const Duration(seconds: 10)),
-                        ),
-                      const SizedBox(width: 32.0),
-                      _controlButton(
-                        node: _audioNode,
-                        icon: Icons.translate_rounded,
-                        size: 40.0,
-                        onPressed: _showAudioMenu,
-                      ),
-                      const SizedBox(width: 12.0),
-                      _controlButton(
-                        node: _codecNode,
-                        icon: Icons.settings_input_component_rounded,
-                        size: 40.0,
-                        onPressed: _switchCodec,
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                if (isVod)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                    child: VideoProgressIndicator(
-                      _videoPlayerController!,
-                      allowScrubbing: true,
-                      colors: const VideoProgressColors(
-                        playedColor: Colors.red,
-                        bufferedColor: Colors.white24,
-                        backgroundColor: Colors.white10,
-                      ),
-                    ),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40.0,
-                    vertical: 20.0,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _formatDuration(position),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (isVod)
-                        Text(
-                          _formatDuration(duration),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8.0,
-                            vertical: 2.0,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          child: const Text(
-                            'EN VIVO',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10.0,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNativePlayer() {
-    final bool hasError =
-        _errorMessage != null ||
-        (_videoPlayerController?.value.hasError ?? false);
-    final String? logoUrl = widget.logoUrl;
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (!_showControls &&
-              (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-                  event.logicalKey == LogicalKeyboardKey.arrowDown ||
-                  event.logicalKey == LogicalKeyboardKey.arrowLeft ||
-                  event.logicalKey == LogicalKeyboardKey.arrowRight ||
-                  event.logicalKey == LogicalKeyboardKey.enter ||
-                  event.logicalKey == LogicalKeyboardKey.select ||
-                  event.logicalKey == LogicalKeyboardKey.accept)) {
-            _toggleControls();
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.backspace ||
-              event.logicalKey == LogicalKeyboardKey.escape ||
-              event.logicalKey == LogicalKeyboardKey.goBack) {
-            if (_showControls) {
-              setState(() => _showControls = false);
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          if (logoUrl != null && (!_isInitialized || hasError))
-            Positioned.fill(
-              child: Image.network(
-                logoUrl,
-                fit: BoxFit.cover,
-                color: Colors.black.withValues(alpha: 0.5),
-                colorBlendMode: BlendMode.darken,
-              ),
-            ),
-          if (_videoPlayerController != null && _isInitialized && !hasError)
-            GestureDetector(
-              onTap: _toggleControls,
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: _videoPlayerController!.value.aspectRatio,
-                  child: VideoPlayer(_videoPlayerController!),
-                ),
-              ),
-            ),
-          if (_isInitialized && !hasError) _buildCustomControls(),
-          if (_currentStatus == PlayerStatus.retrying ||
-              _currentStatus == PlayerStatus.connecting)
-            Positioned(
-              bottom: 80.0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 6.0,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                child: Text(
-                  _currentStatus == PlayerStatus.retrying
-                      ? 'Reconectando...'
-                      : 'Conectando...',
-                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _initializePlayer() async {
     if (_currentStatus == PlayerStatus.webFallback) {
       return;
@@ -546,5 +328,334 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     } catch (e) {
       _handleError(e.toString());
     }
+  }
+
+  void _onVerticalDragUpdate(DragUpdateDetails details, double width) {
+    if (details.localPosition.dx < width / 2) {
+      _updateBrightness(-details.primaryDelta! / 200);
+    } else {
+      _updateVolume(-details.primaryDelta! / 200);
+    }
+  }
+
+  Future<void> _updateBrightness(double delta) async {
+    _brightness = (_brightness + delta).clamp(0.0, 1.0);
+    try {
+      await ScreenBrightness().setScreenBrightness(_brightness);
+    } catch (e) {
+      debugPrint('Error setting brightness: ${e}');
+    }
+    setState(() {
+      _showBrightnessIndicator = true;
+      _showVolumeIndicator = false;
+    });
+    _resetOverlayTimer();
+  }
+
+  Future<void> _updateVolume(double delta) async {
+    _volume = (_volume + delta).clamp(0.0, 1.0);
+    VolumeController().setVolume(_volume);
+    setState(() {
+      _showVolumeIndicator = true;
+      _showBrightnessIndicator = false;
+    });
+    _resetOverlayTimer();
+  }
+
+  void _resetOverlayTimer() {
+    _overlayTimer?.cancel();
+    _overlayTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() {
+          _showVolumeIndicator = false;
+          _showBrightnessIndicator = false;
+        });
+      }
+    });
+  }
+
+  Widget _buildGestureIndicator(IconData icon, double value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      decoration: BoxDecoration(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(20.0),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 20.0),
+          const SizedBox(width: 8.0),
+          SizedBox(
+            width: 100.0,
+            child: LinearProgressIndicator(
+              value: value,
+              backgroundColor: Colors.white24,
+              color: color,
+              minHeight: 4.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomControls() {
+    final bool isPlaying = _videoPlayerController?.value.isPlaying ?? false;
+    final Duration position =
+        _videoPlayerController?.value.position ?? Duration.zero;
+    final Duration duration =
+        _videoPlayerController?.value.duration ?? Duration.zero;
+    final bool isVod = duration > Duration.zero;
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          GestureDetector(
+            onVerticalDragUpdate: (details) => _onVerticalDragUpdate(
+              details,
+              MediaQuery.of(context).size.width,
+            ),
+            onTap: _toggleControls,
+          ),
+          if (_showVolumeIndicator || _showBrightnessIndicator)
+            Center(
+              child: _showVolumeIndicator
+                  ? _buildGestureIndicator(
+                      Icons.volume_up,
+                      _volume,
+                      Colors.blue,
+                    )
+                  : _buildGestureIndicator(
+                      Icons.brightness_6,
+                      _brightness,
+                      Colors.orange,
+                    ),
+            ),
+          AnimatedOpacity(
+            opacity: _showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: IgnorePointer(
+              ignoring: !_showControls,
+              child: Container(
+                color: Colors.black45,
+                child: Column(
+                  children: [
+                    const Spacer(),
+                    FocusTraversalGroup(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isVod)
+                            _controlButton(
+                              node: _rewindNode,
+                              icon: Icons.replay_10_rounded,
+                              size: 28.0,
+                              onPressed: () =>
+                                  _seekRelative(const Duration(seconds: -10)),
+                            ),
+                          const SizedBox(width: 16.0),
+                          _controlButton(
+                            node: _playPauseNode,
+                            icon: isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 48.0,
+                            onPressed: () {
+                              setState(() {
+                                isPlaying
+                                    ? _videoPlayerController?.pause()
+                                    : _videoPlayerController?.play();
+                              });
+                              _startControlsTimer();
+                            },
+                          ),
+                          const SizedBox(width: 16.0),
+                          if (isVod)
+                            _controlButton(
+                              node: _forwardNode,
+                              icon: Icons.forward_10_rounded,
+                              size: 28.0,
+                              onPressed: () =>
+                                  _seekRelative(const Duration(seconds: 10)),
+                            ),
+                          const SizedBox(width: 24.0),
+                          _controlButton(
+                            node: _audioNode,
+                            icon: Icons.translate_rounded,
+                            size: 28.0,
+                            onPressed: _showAudioMenu,
+                          ),
+                          const SizedBox(width: 8.0),
+                          _controlButton(
+                            node: _codecNode,
+                            icon: Icons.settings_input_component_rounded,
+                            size: 28.0,
+                            onPressed: _switchCodec,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    if (isVod)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        child: VideoProgressIndicator(
+                          _videoPlayerController!,
+                          allowScrubbing: true,
+                          colors: const VideoProgressColors(
+                            playedColor: Colors.red,
+                            bufferedColor: Colors.white24,
+                            backgroundColor: Colors.white10,
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40.0,
+                        vertical: 15.0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatDuration(position),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.0,
+                            ),
+                          ),
+                          if (isVod)
+                            Text(
+                              _formatDuration(duration),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.0,
+                              ),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6.0,
+                                vertical: 2.0,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
+                              child: const Text(
+                                'EN VIVO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9.0,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls) {
+      _startControlsTimer();
+      if (MediaQuery.of(context).navigationMode == NavigationMode.directional) {
+        _playPauseNode.requestFocus();
+      }
+    }
+  }
+
+  Widget _buildNativePlayer() {
+    final bool hasError =
+        _errorMessage != null ||
+        (_videoPlayerController?.value.hasError ?? false);
+    final String? logoUrl = widget.logoUrl;
+    final bool isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (!_showControls &&
+              (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+                  event.logicalKey == LogicalKeyboardKey.arrowDown ||
+                  event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                  event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                  event.logicalKey == LogicalKeyboardKey.enter ||
+                  event.logicalKey == LogicalKeyboardKey.select ||
+                  event.logicalKey == LogicalKeyboardKey.accept)) {
+            _toggleControls();
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.backspace ||
+              event.logicalKey == LogicalKeyboardKey.escape ||
+              event.logicalKey == LogicalKeyboardKey.goBack) {
+            if (_showControls) {
+              setState(() => _showControls = false);
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (logoUrl != null && (!_isInitialized || hasError))
+            Positioned.fill(
+              child: Image.network(
+                logoUrl,
+                fit: BoxFit.cover,
+                color: Colors.black.withValues(alpha: 0.5),
+                colorBlendMode: BlendMode.darken,
+              ),
+            ),
+          if (_videoPlayerController != null && _isInitialized && !hasError)
+            Center(
+              child: AspectRatio(
+                aspectRatio: _videoPlayerController!.value.aspectRatio,
+                child: VideoPlayer(_videoPlayerController!),
+              ),
+            ),
+          if (_isInitialized && !hasError) _buildCustomControls(),
+          if (_currentStatus == PlayerStatus.retrying ||
+              _currentStatus == PlayerStatus.connecting)
+            Positioned(
+              bottom: 80.0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: 6.0,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+                child: Text(
+                  _currentStatus == PlayerStatus.retrying
+                      ? 'Reconectando...'
+                      : 'Conectando...',
+                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

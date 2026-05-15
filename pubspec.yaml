@@ -21,6 +21,8 @@ dependencies:
   http: ^1.2.0
   better_player_plus: ^1.2.1
   video_player_android: ^2.4.15
+  screen_brightness: ^1.0.1
+  volume_controller: ^2.0.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

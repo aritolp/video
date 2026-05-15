@@ -7,6 +7,7 @@ import 'package:tvplus/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 @NowaGenerated()
 class AppState extends ChangeNotifier {
@@ -68,6 +69,12 @@ class AppState extends ChangeNotifier {
 
   List<listaDeCanales> get externalChannels {
     return _externalChannels;
+  }
+
+  double _m3uProgress = 0.0;
+
+  double get m3uProgress {
+    return _m3uProgress;
   }
 
   void changeTheme(ThemeData theme) {
@@ -171,18 +178,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> loadExternalM3U(String url) async {
-    try {
-      final channels = await SupabaseService().parseM3UFromUrl(url);
-      _externalChannels = channels;
-      sharedPrefs.setString('external_m3u_url', url);
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading external M3U: ${e}');
-      rethrow;
-    }
-  }
-
   void clearExternalM3U() {
     _externalChannels = [];
     sharedPrefs.remove('external_m3u_url');
@@ -197,6 +192,71 @@ class AppState extends ChangeNotifier {
       } catch (e) {
         debugPrint('Failed to load saved M3U on startup: ${e}');
       }
+    }
+  }
+
+  Future<void> loadExternalM3U(String url) async {
+    try {
+      _m3uProgress = 0.1;
+      notifyListeners();
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception('Error cargando M3U');
+      }
+      _m3uProgress = 0.3;
+      notifyListeners();
+      final lines = response.body.split('\n');
+      final totalLines = lines.length;
+      final List<listaDeCanales> channels = [];
+      String? currentName;
+      String? currentLogo;
+      String? currentGroup;
+      int tempId = -1000;
+      for (int i = 0; i < totalLines; i++) {
+        String line = lines[i].trim();
+        if (line.startsWith('#EXTINF:')) {
+          final commaIndex = line.lastIndexOf(',');
+          if (commaIndex != -1) {
+            currentName = line.substring(commaIndex + 1).trim();
+          }
+          final logoMatch = RegExp('tvg-logo="([^"]+)"').firstMatch(line);
+          currentLogo = logoMatch?.group(1);
+          final groupMatch = RegExp('group-title="([^"]+)"').firstMatch(line);
+          currentGroup = groupMatch?.group(1);
+        } else if (line.isNotEmpty && !line.startsWith('#')) {
+          if (currentName != null) {
+            channels.add(
+              listaDeCanales(
+                id: tempId--,
+                nombre: currentName,
+                url_stream: line,
+                logo: currentLogo,
+                categoria: 'M3U',
+              ),
+            );
+          }
+          currentName = null;
+          currentLogo = null;
+          currentGroup = null;
+        }
+        if (i % (totalLines ~/ 10 + 1) == 0) {
+          _m3uProgress = 0.3 + (0.7 * (i / totalLines));
+          notifyListeners();
+        }
+      }
+      _externalChannels = channels;
+      _m3uProgress = 1.0;
+      sharedPrefs.setString('external_m3u_url', url);
+      notifyListeners();
+      Future.delayed(const Duration(seconds: 1), () {
+        _m3uProgress = 0.0;
+        notifyListeners();
+      });
+    } catch (e) {
+      _m3uProgress = 0.0;
+      notifyListeners();
+      debugPrint('Error loading external M3U: ${e}');
+      rethrow;
     }
   }
 }

@@ -9,8 +9,8 @@ import 'package:tvplus/main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tvplus/globals/app_state.dart';
 import 'package:tvplus/components/category_chip.dart';
-import 'package:tvplus/components/hls_video_player.dart';
 import 'package:tvplus/components/channel_card.dart';
+import 'package:tvplus/components/hls_video_player.dart';
 
 @NowaGenerated()
 class TvPlus extends StatefulWidget {
@@ -358,43 +358,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFocusIconButton({
-    required FocusNode node,
-    required IconData icon,
-    required Color color,
-    required void Function() onPressed,
-  }) {
-    return Focus(
-      focusNode: node,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select)) {
-          onPressed();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4.0),
-        decoration: BoxDecoration(
-          color: node.hasFocus
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.transparent,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: node.hasFocus ? Colors.white : Colors.transparent,
-            width: 2.0,
-          ),
-        ),
-        child: IconButton(
-          onPressed: onPressed,
-          icon: Icon(icon, color: color),
-        ),
-      ),
-    );
-  }
-
   Widget _buildCategoryFilters(
     List<listaDeCanales> channels,
     AppState appState,
@@ -478,107 +441,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildM3UImportSection(AppState appState) {
-    final hasExternal = appState.externalChannels.isNotEmpty;
-    final FocusNode _m3uBtnNode = FocusNode();
-    final FocusNode _m3uDelNode = FocusNode();
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.link, color: Colors.red, size: 20.0),
-              const SizedBox(width: 12.0),
-              const Expanded(
-                child: Text(
-                  'Lista M3U Externa',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (hasExternal)
-                Focus(
-                  focusNode: _m3uDelNode,
-                  onKeyEvent: (node, event) {
-                    if (event is KeyDownEvent &&
-                        (event.logicalKey == LogicalKeyboardKey.enter ||
-                            event.logicalKey == LogicalKeyboardKey.select)) {
-                      appState.clearExternalM3U();
-                      return KeyEventResult.handled;
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: _m3uDelNode.hasFocus
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      onPressed: () => appState.clearExternalM3U(),
-                      icon: Icon(
-                        Icons.delete_outline,
-                        color: _m3uDelNode.hasFocus
-                            ? Colors.white
-                            : Colors.white54,
-                        size: 20.0,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8.0),
-          Text(
-            hasExternal
-                ? '${appState.externalChannels.length} canales cargados'
-                : 'Carga una lista M3U o Xtream Codes',
-            style: const TextStyle(color: Colors.white54, fontSize: 12.0),
-          ),
-          const SizedBox(height: 16.0),
-          Focus(
-            focusNode: _m3uBtnNode,
-            onKeyEvent: (node, event) {
-              if (event is KeyDownEvent &&
-                  (event.logicalKey == LogicalKeyboardKey.enter ||
-                      event.logicalKey == LogicalKeyboardKey.select)) {
-                _showM3UDialog(appState);
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: ElevatedButton(
-              onPressed: () => _showM3UDialog(appState),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                side: BorderSide(
-                  color: _m3uBtnNode.hasFocus
-                      ? Colors.white
-                      : Colors.transparent,
-                  width: 2.0,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-              ),
-              child: Text(hasExternal ? 'Actualizar Lista' : 'Configurar M3U'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _handleM3ULoad(AppState appState, String url) async {
     try {
       if (url.isNotEmpty) {
@@ -654,397 +516,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     _searchNode.dispose();
     _searchController.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = AppState.of(context);
-    final favoriteColor = Colors.red.withValues(alpha: 0.7);
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        final bool isLandscape = orientation == Orientation.landscape;
-        _handleSystemUI(isLandscape);
-        return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) {
-              return;
-            }
-            if (_isFullScreen) {
-              setState(() => _isFullScreen = false);
-              return;
-            }
-            if (appState.isShowingAbout || appState.isShowingFavorites) {
-              appState.setShowingAbout(false);
-              appState.setShowingFavorites(false);
-            } else {
-              final bool? confirm = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: Colors.grey[900],
-                  title: const Text(
-                    'Salir',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  content: const Text(
-                    '¿Quieres salir de la aplicación?',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('NO'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text(
-                        'SÍ',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-              if (confirm == true) {
-                SystemNavigator.pop();
-              }
-            }
-          },
-          child: Scaffold(
-            backgroundColor: Colors.black,
-            body: SafeArea(
-              top: !isLandscape,
-              bottom: !isLandscape,
-              left: !isLandscape,
-              right: !isLandscape,
-              child: DataBuilder<List<listaDeCanales>>(
-                future: _channelsFuture,
-                builder: (context, channels) {
-                  if (channels == null || channels.isEmpty) {
-                    return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          CircularProgressIndicator(color: Colors.red),
-                          SizedBox(height: 16.0),
-                          Text(
-                            'Cargando canales...',
-                            style: TextStyle(color: Colors.white54),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  final allChannelsAvailable = [
-                    ...channels,
-                    ...appState.externalChannels,
-                  ];
-                  final currentChannel =
-                      appState.selectedChannel ??
-                      (allChannelsAvailable.firstWhere(
-                        (c) => c.id == appState.selectedChannelId,
-                        orElse: () => allChannelsAvailable[0],
-                      ));
-                  final String? rawUrl = currentChannel.url_stream;
-                  final String streamUrl =
-                      (rawUrl != null && rawUrl!.isNotEmpty)
-                      ? rawUrl!
-                      : 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8';
-                  final String? logoUrl =
-                      (currentChannel.logo != null &&
-                          currentChannel.logo!.isNotEmpty)
-                      ? currentChannel.logo
-                      : null;
-                  final playerWidget = Focus(
-                    focusNode: _playerNode,
-                    onKeyEvent: (node, event) {
-                      if (event is KeyDownEvent) {
-                        if (event.logicalKey == LogicalKeyboardKey.enter ||
-                            event.logicalKey == LogicalKeyboardKey.select) {
-                          _toggleFullScreen();
-                          return KeyEventResult.handled;
-                        }
-                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                          _favBtnNode.requestFocus();
-                          return KeyEventResult.handled;
-                        }
-                      }
-                      return KeyEventResult.ignored;
-                    },
-                    child: GestureDetector(
-                      onTap: _toggleFullScreen,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: (_playerNode.hasFocus && !_isFullScreen)
-                            ? const EdgeInsets.all(4.0)
-                            : EdgeInsets.zero,
-                        decoration: BoxDecoration(
-                          color: (_playerNode.hasFocus && !_isFullScreen)
-                              ? Colors.red
-                              : Colors.transparent,
-                          borderRadius: (_isFullScreen || isLandscape)
-                              ? BorderRadius.zero
-                              : BorderRadius.circular(20.0),
-                        ),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: (_isFullScreen || isLandscape)
-                                  ? BorderRadius.zero
-                                  : BorderRadius.circular(16.0),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: HlsVideoPlayer(
-                              key: ValueKey('${streamUrl}_${_refreshCount}'),
-                              url: streamUrl,
-                              logoUrl: logoUrl,
-                              userAgent: currentChannel.userAgent,
-                              referer: currentChannel.referer,
-                              onStatusChanged: (status, message) {
-                                if (mounted) {
-                                  setState(() {
-                                    playerStatus = status;
-                                    playerMessage = message;
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                  if (_isFullScreen) {
-                    return Container(
-                      color: Colors.black,
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: Center(child: playerWidget),
-                    );
-                  }
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth > 700) {
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: playerWidget,
-                                    ),
-                                    _buildChannelInfo(
-                                      currentChannel,
-                                      favoriteColor,
-                                      (appState.favoriteChannels ?? [])
-                                          .contains(currentChannel.id),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: _buildListSection(
-                                appState,
-                                channels,
-                                [],
-                                currentChannel,
-                              ),
-                            ),
-                          ],
-                        );
-                      } else {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                              ),
-                              child: playerWidget,
-                            ),
-                            _buildChannelInfo(
-                              currentChannel,
-                              favoriteColor,
-                              (appState.favoriteChannels ?? []).contains(
-                                currentChannel.id,
-                              ),
-                            ),
-                            const SizedBox(height: 24.0),
-                            Expanded(
-                              child: _buildListSection(
-                                appState,
-                                channels,
-                                [],
-                                currentChannel,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showM3UDialog(AppState appState) {
-    final controller = TextEditingController(
-      text: sharedPrefs.getString('external_m3u_url') ?? '',
-    );
-    final FocusNode _urlNode = FocusNode();
-    final FocusNode _cancelNode = FocusNode();
-    final FocusNode _loadNode = FocusNode();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey[900],
-        title: const Text(
-          'Configurar M3U',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Pega tu URL de M3U o Xtream Codes:',
-                style: TextStyle(color: Colors.white70, fontSize: 13.0),
-              ),
-              const SizedBox(height: 16.0),
-              Focus(
-                focusNode: _urlNode,
-                onFocusChange: (hasFocus) {
-                  setState(() {});
-                },
-                onKeyEvent: (node, event) {
-                  if (event is KeyDownEvent &&
-                      (event.logicalKey == LogicalKeyboardKey.enter ||
-                          event.logicalKey == LogicalKeyboardKey.select)) {
-                    _loadNode.requestFocus();
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: _urlNode.hasFocus ? Colors.white : Colors.white24,
-                      width: 2.0,
-                    ),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: TextField(
-                    controller: controller,
-                    autofocus: true,
-                    style: const TextStyle(color: Colors.white),
-                    focusNode: FocusNode(
-                      canRequestFocus: false,
-                      skipTraversal: true,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'http://...',
-                      hintStyle: const TextStyle(color: Colors.white24),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.05),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          StatefulBuilder(
-            builder: (context, setState) {
-              _urlNode.addListener(() => setState(() {}));
-              _cancelNode.addListener(() => setState(() {}));
-              _loadNode.addListener(() => setState(() {}));
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Focus(
-                    focusNode: _cancelNode,
-                    onKeyEvent: (node, event) {
-                      if (event is KeyDownEvent &&
-                          (event.logicalKey == LogicalKeyboardKey.enter ||
-                              event.logicalKey == LogicalKeyboardKey.select)) {
-                        Navigator.pop(context);
-                        return KeyEventResult.handled;
-                      }
-                      return KeyEventResult.ignored;
-                    },
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'CANCELAR',
-                        style: TextStyle(
-                          color: _cancelNode.hasFocus
-                              ? Colors.white
-                              : Colors.white54,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8.0),
-                  Focus(
-                    focusNode: _loadNode,
-                    onKeyEvent: (node, event) {
-                      if (event is KeyDownEvent &&
-                          (event.logicalKey == LogicalKeyboardKey.enter ||
-                              event.logicalKey == LogicalKeyboardKey.select)) {
-                        _handleM3ULoad(appState, controller.text.trim());
-                        return KeyEventResult.handled;
-                      }
-                      return KeyEventResult.ignored;
-                    },
-                    child: ElevatedButton(
-                      onPressed: () =>
-                          _handleM3ULoad(appState, controller.text.trim()),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                        side: BorderSide(
-                          color: _loadNode.hasFocus
-                              ? Colors.white
-                              : Colors.transparent,
-                          width: 2.0,
-                        ),
-                      ),
-                      child: const Text('CARGAR'),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _toggleFullScreen() async {
-    if (!_isFullScreen) {
-      setState(() => _isFullScreen = true);
-    } else {
-      setState(() => _isFullScreen = false);
-    }
   }
 
   Widget _buildListSection(
@@ -1213,6 +684,558 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildM3UImportSection(AppState appState) {
+    final hasExternal = appState.externalChannels.isNotEmpty;
+    final FocusNode _m3uBtnNode = FocusNode();
+    final FocusNode _m3uDelNode = FocusNode();
+    final m3uProgress = appState.m3uProgress;
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.link, color: Colors.red, size: 20.0),
+              const SizedBox(width: 12.0),
+              const Expanded(
+                child: Text(
+                  'Lista M3U Externa',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (hasExternal)
+                Focus(
+                  focusNode: _m3uDelNode,
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent &&
+                        (event.logicalKey == LogicalKeyboardKey.enter ||
+                            event.logicalKey == LogicalKeyboardKey.select)) {
+                      appState.clearExternalM3U();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _m3uDelNode.hasFocus
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      onPressed: () => appState.clearExternalM3U(),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: _m3uDelNode.hasFocus
+                            ? Colors.white
+                            : Colors.white54,
+                        size: 20.0,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8.0),
+          Text(
+            hasExternal
+                ? '${appState.externalChannels.length} canales cargados'
+                : 'Carga una lista M3U o Xtream Codes',
+            style: const TextStyle(color: Colors.white54, fontSize: 12.0),
+          ),
+          if (m3uProgress > 0 && m3uProgress < 1.0) ...[
+            const SizedBox(height: 16.0),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4.0),
+              child: LinearProgressIndicator(
+                value: m3uProgress,
+                backgroundColor: Colors.white10,
+                color: Colors.red,
+                minHeight: 8.0,
+              ),
+            ),
+            const SizedBox(height: 8.0),
+            Text(
+              '${(m3uProgress * 100).toInt()}%',
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 12.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+          const SizedBox(height: 16.0),
+          Focus(
+            focusNode: _m3uBtnNode,
+            onKeyEvent: (node, event) {
+              if (event is KeyDownEvent &&
+                  (event.logicalKey == LogicalKeyboardKey.enter ||
+                      event.logicalKey == LogicalKeyboardKey.select)) {
+                _showM3UDialog(appState);
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            },
+            child: ElevatedButton(
+              onPressed: (m3uProgress > 0 && m3uProgress < 1.0)
+                  ? null
+                  : () => _showM3UDialog(appState),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.red.withValues(alpha: 0.3),
+                side: BorderSide(
+                  color: _m3uBtnNode.hasFocus
+                      ? Colors.white
+                      : Colors.transparent,
+                  width: 2.0,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+              ),
+              child: Text(hasExternal ? 'Actualizar Lista' : 'Configurar M3U'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showM3UDialog(AppState appState) {
+    final controller = TextEditingController(
+      text: sharedPrefs.getString('external_m3u_url') ?? '',
+    );
+    final FocusNode _urlNode = FocusNode();
+    final FocusNode _cancelNode = FocusNode();
+    final FocusNode _loadNode = FocusNode();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          'Configurar M3U',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Pega tu URL de M3U o Xtream Codes:',
+                style: TextStyle(color: Colors.white70, fontSize: 13.0),
+              ),
+              const SizedBox(height: 16.0),
+              Focus(
+                focusNode: _urlNode,
+                onKeyEvent: (node, event) {
+                  if (event is KeyDownEvent &&
+                      (event.logicalKey == LogicalKeyboardKey.enter ||
+                          event.logicalKey == LogicalKeyboardKey.select)) {
+                    _loadNode.requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  return KeyEventResult.ignored;
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _urlNode.hasFocus ? Colors.white : Colors.white24,
+                      width: 2.0,
+                    ),
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  child: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'http://...',
+                      hintStyle: const TextStyle(color: Colors.white24),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          StatefulBuilder(
+            builder: (context, setState) {
+              _cancelNode.addListener(() => setState(() {}));
+              _loadNode.addListener(() => setState(() {}));
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Focus(
+                    focusNode: _cancelNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          (event.logicalKey == LogicalKeyboardKey.enter ||
+                              event.logicalKey == LogicalKeyboardKey.select)) {
+                        Navigator.pop(context);
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'CANCELAR',
+                        style: TextStyle(
+                          color: _cancelNode.hasFocus
+                              ? Colors.white
+                              : Colors.white54,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8.0),
+                  Focus(
+                    focusNode: _loadNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          (event.logicalKey == LogicalKeyboardKey.enter ||
+                              event.logicalKey == LogicalKeyboardKey.select)) {
+                        _handleM3ULoad(appState, controller.text.trim());
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: ElevatedButton(
+                      onPressed: () =>
+                          _handleM3ULoad(appState, controller.text.trim()),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        side: BorderSide(
+                          color: _loadNode.hasFocus
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 2.0,
+                        ),
+                      ),
+                      child: const Text('CARGAR'),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleFullScreen() {
+    if (!_isFullScreen) {
+      setState(() => _isFullScreen = true);
+    } else {
+      setState(() => _isFullScreen = false);
+    }
+  }
+
+  Widget _buildFocusIconButton({
+    required FocusNode node,
+    required IconData icon,
+    required Color color,
+    required void Function() onPressed,
+  }) {
+    final bool isTV =
+        MediaQuery.of(context).navigationMode == NavigationMode.directional;
+    return Focus(
+      focusNode: node,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select)) {
+          onPressed();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+        decoration: BoxDecoration(
+          color: (node.hasFocus && isTV)
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: (node.hasFocus && isTV) ? Colors.white : Colors.transparent,
+            width: 2.0,
+          ),
+        ),
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon, color: color),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = AppState.of(context);
+    final favoriteColor = Colors.red.withValues(alpha: 0.7);
+    final bool isTV =
+        MediaQuery.of(context).navigationMode == NavigationMode.directional;
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        final bool isLandscape = orientation == Orientation.landscape;
+        _handleSystemUI(isLandscape);
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) {
+              return;
+            }
+            if (_isFullScreen) {
+              setState(() => _isFullScreen = false);
+              return;
+            }
+            if (appState.isShowingAbout || appState.isShowingFavorites) {
+              appState.setShowingAbout(false);
+              appState.setShowingFavorites(false);
+            } else {
+              final bool? confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: Colors.grey[900],
+                  title: const Text(
+                    'Salir',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  content: const Text(
+                    '¿Quieres salir de la aplicación?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('NO'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text(
+                        'SÍ',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                SystemNavigator.pop();
+              }
+            }
+          },
+          child: Scaffold(
+            backgroundColor: Colors.black,
+            body: SafeArea(
+              top: !isLandscape,
+              bottom: !isLandscape,
+              left: !isLandscape,
+              right: !isLandscape,
+              child: DataBuilder<List<listaDeCanales>>(
+                future: _channelsFuture,
+                builder: (context, channels) {
+                  if (channels == null || channels.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          CircularProgressIndicator(color: Colors.red),
+                          SizedBox(height: 16.0),
+                          Text(
+                            'Cargando canales...',
+                            style: TextStyle(color: Colors.white54),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  final allChannelsAvailable = [
+                    ...channels,
+                    ...appState.externalChannels,
+                  ];
+                  final currentChannel =
+                      appState.selectedChannel ??
+                      (allChannelsAvailable.firstWhere(
+                        (c) => c.id == appState.selectedChannelId,
+                        orElse: () => allChannelsAvailable[0],
+                      ));
+                  final String? rawUrl = currentChannel.url_stream;
+                  final String streamUrl =
+                      (rawUrl != null && rawUrl!.isNotEmpty)
+                      ? rawUrl!
+                      : 'https://livetrx01.vodgc.net/eltrecetv/index.m3u8';
+                  final String? logoUrl =
+                      (currentChannel.logo != null &&
+                          currentChannel.logo!.isNotEmpty)
+                      ? currentChannel.logo
+                      : null;
+                  final playerWidget = Focus(
+                    focusNode: _playerNode,
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent) {
+                        if (event.logicalKey == LogicalKeyboardKey.enter ||
+                            event.logicalKey == LogicalKeyboardKey.select) {
+                          _toggleFullScreen();
+                          return KeyEventResult.handled;
+                        }
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                          _favBtnNode.requestFocus();
+                          return KeyEventResult.handled;
+                        }
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: GestureDetector(
+                      onTap: _toggleFullScreen,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding:
+                            (_playerNode.hasFocus && !_isFullScreen && isTV)
+                            ? const EdgeInsets.all(4.0)
+                            : EdgeInsets.zero,
+                        decoration: BoxDecoration(
+                          color:
+                              (_playerNode.hasFocus && !_isFullScreen && isTV)
+                              ? Colors.red
+                              : Colors.transparent,
+                          borderRadius: (_isFullScreen || isLandscape)
+                              ? BorderRadius.zero
+                              : BorderRadius.circular(20.0),
+                        ),
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: (_isFullScreen || isLandscape)
+                                  ? BorderRadius.zero
+                                  : BorderRadius.circular(16.0),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: HlsVideoPlayer(
+                              key: ValueKey('${streamUrl}_${_refreshCount}'),
+                              url: streamUrl,
+                              logoUrl: logoUrl,
+                              userAgent: currentChannel.userAgent,
+                              referer: currentChannel.referer,
+                              onStatusChanged: (status, message) {
+                                if (mounted) {
+                                  setState(() {
+                                    playerStatus = status;
+                                    playerMessage = message;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                  if (_isFullScreen) {
+                    return Container(
+                      color: Colors.black,
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: Center(child: playerWidget),
+                    );
+                  }
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth > 700) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: playerWidget,
+                                    ),
+                                    _buildChannelInfo(
+                                      currentChannel,
+                                      favoriteColor,
+                                      (appState.favoriteChannels ?? [])
+                                          .contains(currentChannel.id),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: _buildListSection(
+                                appState,
+                                channels,
+                                [],
+                                currentChannel,
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
+                              child: playerWidget,
+                            ),
+                            _buildChannelInfo(
+                              currentChannel,
+                              favoriteColor,
+                              (appState.favoriteChannels ?? []).contains(
+                                currentChannel.id,
+                              ),
+                            ),
+                            const SizedBox(height: 24.0),
+                            Expanded(
+                              child: _buildListSection(
+                                appState,
+                                channels,
+                                [],
+                                currentChannel,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
