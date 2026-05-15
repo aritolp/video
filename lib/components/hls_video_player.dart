@@ -195,17 +195,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     _startControlsTimer();
   }
 
-  Future<void> _showAudioMenu() async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Cambiando pista de audio secundaria...'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Colors.blue.withValues(alpha: 0.8),
-      ),
-    );
-    _initializePlayer();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -399,60 +388,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
-  Future<void> _initializePlayer() async {
-    if (_currentStatus == PlayerStatus.webFallback) {
-      return;
-    }
-    setState(() {
-      _isInitialized = false;
-      _errorMessage = null;
-    });
-    try {
-      final Duration? lastPosition = _videoPlayerController?.value.position;
-      _videoPlayerController?.dispose();
-      await WakelockPlus.enable();
-      final Map<String, String> headers = {
-        'User-Agent':
-            widget.userAgent ??
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
-      };
-      final String? currentReferer = widget.referer;
-      if (currentReferer != null && currentReferer!.isNotEmpty) {
-        headers['Referer'] = currentReferer;
-      }
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.url),
-        httpHeaders: headers,
-        videoPlayerOptions: VideoPlayerOptions(
-          allowBackgroundPlayback: true,
-          mixWithOthers: true,
-        ),
-      );
-      await _videoPlayerController?.initialize();
-      _videoPlayerController?.addListener(_listener);
-      await _videoPlayerController?.setVolume(1.0);
-      if (lastPosition != null && lastPosition! > Duration.zero) {
-        await _videoPlayerController?.seekTo(lastPosition);
-      }
-      _videoPlayerController?.play();
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-          _showControls = true;
-        });
-        _startControlsTimer();
-        if (MediaQuery.of(context).navigationMode ==
-            NavigationMode.directional) {
-          _playPauseNode.requestFocus();
-        }
-      }
-    } catch (e) {
-      _handleError(e.toString());
-    }
-  }
-
   Widget _controlButton({
     required FocusNode node,
     required IconData icon,
@@ -507,8 +442,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _videoPlayerController?.value.position ?? Duration.zero;
     final Duration duration =
         _videoPlayerController?.value.duration ?? Duration.zero;
-    final bool isVod = duration > Duration.zero;
-    final String statusLabel = isVod ? 'VIDEO' : 'EN VIVO';
+    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
     return Positioned.fill(
       child: Stack(
         children: [
@@ -627,61 +561,38 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                               fontSize: 11.0,
                             ),
                           ),
-                          if (isVod)
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 5.0,
-                                    vertical: 1.5,
-                                  ),
-                                  margin: const EdgeInsets.only(right: 8.0),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blueAccent.withValues(
-                                      alpha: 0.8,
-                                    ),
-                                    borderRadius: BorderRadius.circular(4.0),
-                                  ),
-                                  child: Text(
-                                    statusLabel,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8.0,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  _formatDuration(duration),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 11.0,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 5.0,
-                                vertical: 1.5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(4.0),
-                              ),
-                              child: Text(
-                                statusLabel,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8.0,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6.0,
+                              vertical: 2.0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isVod
+                                  ? Colors.blueAccent.withValues(alpha: 0.8)
+                                  : Colors.red,
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            child: Text(
+                              isVod ? 'VIDEO' : 'EN VIVO',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 8.0,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
                               ),
                             ),
+                          ),
+                          if (isVod)
+                            Text(
+                              _formatDuration(duration),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.0,
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 40.0),
                         ],
                       ),
                     ),
@@ -693,5 +604,72 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         ],
       ),
     );
+  }
+
+  Future<void> _initializePlayer() async {
+    if (_currentStatus == PlayerStatus.webFallback) {
+      return;
+    }
+    setState(() {
+      _isInitialized = false;
+      _errorMessage = null;
+    });
+    try {
+      final Duration? lastPosition = _videoPlayerController?.value.position;
+      _videoPlayerController?.dispose();
+      await WakelockPlus.enable();
+      final Map<String, String> headers = {
+        'User-Agent':
+            widget.userAgent ??
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+      };
+      if (widget.referer != null && widget.referer!.isNotEmpty) {
+        headers['Referer'] = widget.referer;
+      }
+      _videoPlayerController = VideoPlayerController.networkUrl(
+        Uri.parse(widget.url),
+        httpHeaders: headers,
+        videoPlayerOptions: VideoPlayerOptions(
+          allowBackgroundPlayback: true,
+          mixWithOthers: true,
+        ),
+      );
+      await _videoPlayerController?.initialize();
+      _videoPlayerController?.addListener(_listener);
+      await _videoPlayerController?.setVolume(1.0);
+      if (lastPosition != null && lastPosition! > Duration.zero) {
+        await _videoPlayerController?.seekTo(lastPosition);
+      }
+      _videoPlayerController?.play();
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _showControls = true;
+        });
+        _startControlsTimer();
+        if (MediaQuery.of(context).navigationMode ==
+            NavigationMode.directional) {
+          _playPauseNode.requestFocus();
+        }
+      }
+    } catch (e) {
+      _handleError(e.toString());
+    }
+  }
+
+  Future<void> _showAudioMenu() async {
+    if (_videoPlayerController == null) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Optimizando pistas de audio y reconectando...'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.blue,
+      ),
+    );
+    _initializePlayer();
   }
 }
