@@ -606,6 +606,20 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
+  Future<void> _showAudioMenu() async {
+    if (_videoPlayerController == null) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Optimizando pistas de audio y reconectando...'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.blue,
+      ),
+    );
+    _initializePlayer();
+  }
+
   Future<void> _initializePlayer() async {
     if (_currentStatus == PlayerStatus.webFallback) {
       return;
@@ -625,8 +639,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         'Accept': '*/*',
         'Connection': 'keep-alive',
       };
-      if (widget.referer != null && widget.referer!.isNotEmpty) {
-        headers['Referer'] = widget.referer;
+      final String? currentReferer = widget.referer;
+      if (currentReferer != null && currentReferer!.isNotEmpty) {
+        headers['Referer'] = currentReferer;
       }
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(widget.url),
@@ -657,19 +672,5 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     } catch (e) {
       _handleError(e.toString());
     }
-  }
-
-  Future<void> _showAudioMenu() async {
-    if (_videoPlayerController == null) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Optimizando pistas de audio y reconectando...'),
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.blue,
-      ),
-    );
-    _initializePlayer();
   }
 }
