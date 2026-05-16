@@ -18,6 +18,7 @@ class HlsVideoPlayer extends StatefulWidget {
     this.referer,
     this.onStatusChanged,
     this.logoUrl,
+    this.onToggleFullScreen,
     super.key,
   });
 
@@ -30,6 +31,8 @@ class HlsVideoPlayer extends StatefulWidget {
   final void Function(PlayerStatus status, String message)? onStatusChanged;
 
   final String? logoUrl;
+
+  final void Function()? onToggleFullScreen;
 
   @override
   State<HlsVideoPlayer> createState() {
@@ -389,6 +392,21 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                 color: Colors.black45,
                 child: Column(
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: _controlButton(
+                            node: FocusNode(),
+                            icon: Icons.fullscreen_rounded,
+                            onPressed: () {
+                              widget.onToggleFullScreen?.call();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                     const Spacer(),
                     FocusTraversalGroup(
                       child: Row(
@@ -663,7 +681,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
               ),
             ),
           if (controller != null && _isInitialized && !hasError)
-            Center(child: Video(controller: controller)),
+            Center(
+              child: Video(controller: controller, controls: NoVideoControls),
+            ),
           _buildCustomControls(),
           if (_currentStatus == PlayerStatus.retrying ||
               _currentStatus == PlayerStatus.connecting)

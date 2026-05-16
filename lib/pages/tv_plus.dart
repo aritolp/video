@@ -1137,6 +1137,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                             logoUrl: logoUrl,
                             userAgent: currentChannel.userAgent,
                             referer: currentChannel.referer,
+                            onToggleFullScreen: _toggleFullScreen,
                             onStatusChanged: (status, message) {
                               if (mounted) {
                                 setState(() {
