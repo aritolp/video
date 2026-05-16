@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:tvplus/player_status.dart';
 import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
@@ -342,7 +344,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
               ),
             ),
           if (_videoController != null && _isInitialized && !hasError)
-            Center(child: Video(controller: _videoController)),
+            Center(child: Video(controller: _videoController!)),
           if (_isInitialized && !hasError) _buildCustomControls(),
           if (_currentStatus == PlayerStatus.retrying ||
               _currentStatus == PlayerStatus.connecting)
