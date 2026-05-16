@@ -11,7 +11,10 @@
 #include <bonsoir_windows/bonsoir_windows_plugin_c_api.h>
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_inappwebview_windows/flutter_inappwebview_windows_plugin_c_api.h>
+#include <media_kit_video/media_kit_video_plugin_c_api.h>
+#include <screen_brightness_windows/screen_brightness_windows_plugin.h>
 #include <url_launcher_windows/url_launcher_windows.h>
+#include <volume_controller/volume_controller_plugin_c_api.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   AppLinksPluginCApiRegisterWithRegistrar(
@@ -24,6 +27,12 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FileSelectorWindows"));
   FlutterInappwebviewWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterInappwebviewWindowsPluginCApi"));
+  MediaKitVideoPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("MediaKitVideoPluginCApi"));
+  ScreenBrightnessWindowsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("ScreenBrightnessWindowsPlugin"));
   UrlLauncherWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("UrlLauncherWindows"));
+  VolumeControllerPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("VolumeControllerPluginCApi"));
 }

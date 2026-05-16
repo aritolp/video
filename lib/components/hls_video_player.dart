@@ -1,13 +1,13 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:volume_controller/volume_controller.dart';
-import 'package:screen_brightness/screen_brightness.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:tvplus/player_status.dart';
+import 'dart:async';
+import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:tvplus/components/web_video_player.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:screen_brightness/screen_brightness.dart';
+import 'package:volume_controller/volume_controller.dart';
+import 'package:flutter/services.dart';
 
 @NowaGenerated()
 class HlsVideoPlayer extends StatefulWidget {
@@ -243,7 +243,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Future<void> _updateVolume(double delta) async {
     _volume = (_volume + delta).clamp(0.0, 1.0);
-    VolumeController().setVolume(_volume);
+    VolumeController().instance.setVolume(_volume);
     setState(() {
       _showVolumeIndicator = true;
       _showBrightnessIndicator = false;
