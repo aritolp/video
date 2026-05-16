@@ -1092,6 +1092,9 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                           currentChannel.logo!.isNotEmpty)
                       ? currentChannel.logo
                       : null;
+                  final playerKey = ValueKey(
+                    'player_${streamUrl}_${_refreshCount}',
+                  );
                   final playerWidget = Focus(
                     focusNode: _playerNode,
                     onKeyEvent: (node, event) {
@@ -1132,7 +1135,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                           ),
                           clipBehavior: Clip.antiAlias,
                           child: HlsVideoPlayer(
-                            key: ValueKey('${streamUrl}_${_refreshCount}'),
+                            key: playerKey,
                             url: streamUrl,
                             logoUrl: logoUrl,
                             userAgent: currentChannel.userAgent,

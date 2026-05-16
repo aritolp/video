@@ -200,11 +200,11 @@ class AppState extends ChangeNotifier {
     try {
       _m3uProgress = 0.05;
       notifyListeners();
-      simulationTimer = Timer.periodic(const Duration(milliseconds: 300), (
+      simulationTimer = Timer.periodic(const Duration(milliseconds: 600), (
         timer,
       ) {
-        if (_m3uProgress < 0.85) {
-          _m3uProgress += 0.02;
+        if (_m3uProgress < 0.92) {
+          _m3uProgress += 0.008;
           notifyListeners();
         } else {
           timer.cancel();
@@ -212,9 +212,10 @@ class AppState extends ChangeNotifier {
       });
       final channels = await SupabaseService().parseM3UFromUrl(url);
       simulationTimer?.cancel();
-      _m3uProgress = 0.9;
+      _m3uProgress = 0.95;
       notifyListeners();
       _externalChannels = channels;
+      await Future.delayed(const Duration(milliseconds: 500));
       _m3uProgress = 1.0;
       sharedPrefs.setString('external_m3u_url', url);
       notifyListeners();

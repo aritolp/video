@@ -353,202 +353,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
-  Widget _buildCustomControls() {
-    final bool isPlaying = _isPlaying;
-    final Duration position = _position;
-    final Duration duration = _duration;
-    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
-    final player = _player;
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          GestureDetector(
-            onVerticalDragUpdate: (details) => _onVerticalDragUpdate(
-              details,
-              MediaQuery.of(context).size.width,
-            ),
-            onTap: _toggleControls,
-          ),
-          if (_showVolumeIndicator || _showBrightnessIndicator)
-            Center(
-              child: _showVolumeIndicator
-                  ? _buildGestureIndicator(
-                      Icons.volume_up,
-                      _volume,
-                      Colors.blue,
-                    )
-                  : _buildGestureIndicator(
-                      Icons.brightness_6,
-                      _brightness,
-                      Colors.orange,
-                    ),
-            ),
-          AnimatedOpacity(
-            opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: IgnorePointer(
-              ignoring: !_showControls,
-              child: Container(
-                color: Colors.black45,
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: _controlButton(
-                            node: FocusNode(),
-                            icon: Icons.fullscreen_rounded,
-                            onPressed: () {
-                              widget.onToggleFullScreen?.call();
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    FocusTraversalGroup(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isVod)
-                            _controlButton(
-                              node: _rewindNode,
-                              icon: Icons.replay_10_rounded,
-                              size: 24.0,
-                              onPressed: () =>
-                                  _seekRelative(const Duration(seconds: -10)),
-                            ),
-                          const SizedBox(width: 12.0),
-                          _controlButton(
-                            node: _playPauseNode,
-                            icon: isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 40.0,
-                            onPressed: () {
-                              if (player != null) {
-                                isPlaying ? player.pause() : player.play();
-                              }
-                              _startControlsTimer();
-                            },
-                          ),
-                          const SizedBox(width: 12.0),
-                          if (isVod)
-                            _controlButton(
-                              node: _forwardNode,
-                              icon: Icons.forward_10_rounded,
-                              size: 24.0,
-                              onPressed: () =>
-                                  _seekRelative(const Duration(seconds: 10)),
-                            ),
-                          const SizedBox(width: 20.0),
-                          _controlButton(
-                            node: _audioNode,
-                            icon: Icons.translate_rounded,
-                            size: 24.0,
-                            onPressed: _showAudioMenu,
-                          ),
-                          const SizedBox(width: 6.0),
-                          _controlButton(
-                            node: _codecNode,
-                            icon: Icons.settings_input_component_rounded,
-                            size: 24.0,
-                            onPressed: _switchCodec,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    if (isVod)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                        child: SliderTheme(
-                          data: const SliderThemeData(
-                            trackHeight: 2.0,
-                            thumbShape: RoundSliderThumbShape(
-                              enabledThumbRadius: 6.0,
-                            ),
-                            activeTrackColor: Colors.red,
-                            inactiveTrackColor: Colors.white24,
-                            thumbColor: Colors.red,
-                          ),
-                          child: Slider(
-                            value: position.inMilliseconds.toDouble().clamp(
-                              0.0,
-                              duration.inMilliseconds.toDouble(),
-                            ),
-                            max: duration.inMilliseconds.toDouble(),
-                            onChanged: (value) {
-                              player?.seek(
-                                Duration(milliseconds: value.toInt()),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40.0,
-                        vertical: 12.0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _formatDuration(position),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11.0,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6.0,
-                              vertical: 2.0,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isVod
-                                  ? Colors.blueAccent.withValues(alpha: 0.8)
-                                  : Colors.red,
-                              borderRadius: BorderRadius.circular(4.0),
-                            ),
-                            child: Text(
-                              isVod ? 'VIDEO' : 'EN VIVO',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8.0,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          if (isVod)
-                            Text(
-                              _formatDuration(duration),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11.0,
-                              ),
-                            )
-                          else
-                            const SizedBox(width: 40.0),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _showAudioMenu() async {
     if (_player == null) {
       return;
@@ -724,6 +528,218 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
               isMuted: false,
             )
           : _buildNativePlayer(),
+    );
+  }
+
+  Widget _buildCustomControls() {
+    final bool isPlaying = _isPlaying;
+    final Duration position = _position;
+    final Duration duration = _duration;
+    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
+    final player = _player;
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          GestureDetector(
+            onVerticalDragUpdate: (details) => _onVerticalDragUpdate(
+              details,
+              MediaQuery.of(context).size.width,
+            ),
+            onTap: _toggleControls,
+          ),
+          if (_showVolumeIndicator || _showBrightnessIndicator)
+            Center(
+              child: _showVolumeIndicator
+                  ? _buildGestureIndicator(
+                      Icons.volume_up,
+                      _volume,
+                      Colors.blue,
+                    )
+                  : _buildGestureIndicator(
+                      Icons.brightness_6,
+                      _brightness,
+                      Colors.orange,
+                    ),
+            ),
+          AnimatedOpacity(
+            opacity: _showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: IgnorePointer(
+              ignoring: !_showControls,
+              child: Container(
+                color: Colors.black45,
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: _controlButton(
+                            node: FocusNode(),
+                            icon: Icons.fullscreen_rounded,
+                            onPressed: () {
+                              widget.onToggleFullScreen?.call();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    FocusTraversalGroup(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isVod)
+                            _controlButton(
+                              node: _rewindNode,
+                              icon: Icons.replay_10_rounded,
+                              size: 24.0,
+                              onPressed: () =>
+                                  _seekRelative(const Duration(seconds: -10)),
+                            ),
+                          const SizedBox(width: 12.0),
+                          _controlButton(
+                            node: _playPauseNode,
+                            icon: isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 40.0,
+                            onPressed: () {
+                              if (player != null) {
+                                isPlaying ? player.pause() : player.play();
+                              }
+                              _startControlsTimer();
+                            },
+                          ),
+                          const SizedBox(width: 12.0),
+                          if (isVod)
+                            _controlButton(
+                              node: _forwardNode,
+                              icon: Icons.forward_10_rounded,
+                              size: 24.0,
+                              onPressed: () =>
+                                  _seekRelative(const Duration(seconds: 10)),
+                            ),
+                          const SizedBox(width: 20.0),
+                          _controlButton(
+                            node: _audioNode,
+                            icon: Icons.translate_rounded,
+                            size: 24.0,
+                            onPressed: _showAudioMenu,
+                          ),
+                          const SizedBox(width: 6.0),
+                          _controlButton(
+                            node: _codecNode,
+                            icon: Icons.settings_input_component_rounded,
+                            size: 24.0,
+                            onPressed: _switchCodec,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    if (isVod)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        child: SliderTheme(
+                          data: const SliderThemeData(
+                            trackHeight: 2.0,
+                            thumbShape: RoundSliderThumbShape(
+                              enabledThumbRadius: 6.0,
+                            ),
+                            activeTrackColor: Colors.red,
+                            inactiveTrackColor: Colors.white24,
+                            thumbColor: Colors.red,
+                          ),
+                          child: Slider(
+                            value: position.inMilliseconds.toDouble().clamp(
+                              0.0,
+                              duration.inMilliseconds.toDouble(),
+                            ),
+                            max: duration.inMilliseconds.toDouble(),
+                            onChanged: (value) {
+                              player?.seek(
+                                Duration(milliseconds: value.toInt()),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 40.0,
+                        vertical: 12.0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatDuration(position),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11.0,
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6.0,
+                                  vertical: 2.0,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isVod
+                                      ? Colors.blueAccent.withValues(alpha: 0.8)
+                                      : Colors.red,
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: Text(
+                                  isVod ? 'VIDEO' : 'EN VIVO',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8.0,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8.0),
+                              Text(
+                                isVod
+                                    ? _formatDuration(duration)
+                                    : _formatDuration(position),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (isVod)
+                            Text(
+                              _formatDuration(duration),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.0,
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 40.0),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
