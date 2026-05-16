@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:tvplus/player_status.dart';
+import 'package:volume_controller/volume_controller.dart';
 import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:tvplus/components/web_video_player.dart';
@@ -175,16 +175,17 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   Future<void> _seekRelative(Duration offset) async {
-    if (_player == null || !_isInitialized) {
+    final player = _player;
+    if (player == null || !_isInitialized) {
       return;
     }
     final newPosition = _position + offset;
     if (newPosition < Duration.zero) {
-      await _player.seek(Duration.zero);
+      await player.seek(Duration.zero);
     } else if (newPosition > _duration) {
-      await _player.seek(_duration);
+      await player.seek(_duration);
     } else {
-      await _player.seek(newPosition);
+      await player.seek(newPosition);
     }
     _startControlsTimer();
   }
@@ -243,7 +244,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Future<void> _updateVolume(double delta) async {
     _volume = (_volume + delta).clamp(0.0, 1.0);
-    VolumeController().setVolume(_volume);
+    VolumeController().instance.setVolume(_volume);
     setState(() {
       _showVolumeIndicator = true;
       _showBrightnessIndicator = false;
@@ -304,6 +305,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   Widget _buildNativePlayer() {
     final bool hasError = _errorMessage != null;
     final String? logoUrl = widget.logoUrl;
+    final controller = _videoController;
     return Focus(
       autofocus: true,
       onKeyEvent: (node, event) {
@@ -343,8 +345,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                 colorBlendMode: BlendMode.darken,
               ),
             ),
-          if (_videoController != null && _isInitialized && !hasError)
-            Center(child: Video(controller: _videoController!)),
+          if (controller != null && _isInitialized && !hasError)
+            Center(child: Video(controller: controller)),
           if (_isInitialized && !hasError) _buildCustomControls(),
           if (_currentStatus == PlayerStatus.retrying ||
               _currentStatus == PlayerStatus.connecting)
@@ -425,6 +427,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     final Duration position = _position;
     final Duration duration = _duration;
     final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
+    final player = _player;
     return Positioned.fill(
       child: Stack(
         children: [
@@ -479,7 +482,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                                 : Icons.play_arrow_rounded,
                             size: 40.0,
                             onPressed: () {
-                              isPlaying ? _player.pause() : _player.play();
+                              if (player != null) {
+                                isPlaying ? player.pause() : player.play();
+                              }
                               _startControlsTimer();
                             },
                           ),
@@ -530,7 +535,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                             ),
                             max: duration.inMilliseconds.toDouble(),
                             onChanged: (value) {
-                              _player.seek(
+                              player.seek(
                                 Duration(milliseconds: value.toInt()),
                               );
                             },
@@ -624,16 +629,10 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       final Duration? lastPosition = _position;
       await _player.dispose();
       await WakelockPlus.enable();
-      final PlayerConfiguration configuration;
-      if (_codecs[_currentCodecIndex] == 'Software') {
-        configuration = PlayerConfiguration();
-      } else if (_codecs[_currentCodecIndex] == 'Hardware') {
-        configuration = PlayerConfiguration();
-      } else {
-        configuration = PlayerConfiguration();
-      }
-      _player = Player(configuration: configuration);
-      _videoController = VideoController(_player);
+      final PlayerConfiguration configuration = PlayerConfiguration();
+      final player = Player(configuration: configuration);
+      _player = player;
+      _videoController = VideoController(player);
       final Map<String, String> headers = {
         'User-Agent':
             widget.userAgent ??
@@ -645,7 +644,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       if (currentReferer != null && currentReferer!.isNotEmpty) {
         headers['Referer'] = currentReferer;
       }
-      _player.stream.playing.listen((playing) {
+      player.stream.playing.listen((playing) {
         if (mounted) {
           setState(() {
             _isPlaying = playing;
@@ -656,38 +655,38 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
           }
         }
       });
-      _player.stream.position.listen((position) {
+      player.stream.position.listen((position) {
         if (mounted) {
           setState(() {
             _position = position;
           });
         }
       });
-      _player.stream.duration.listen((duration) {
+      player.stream.duration.listen((duration) {
         if (mounted) {
           setState(() {
             _duration = duration;
           });
         }
       });
-      _player.stream.buffering.listen((buffering) {
+      player.stream.buffering.listen((buffering) {
         if (mounted) {
           setState(() {
             _isBuffering = buffering;
           });
         }
       });
-      _player.stream.error.listen((error) {
+      player.stream.error.listen((error) {
         if (mounted && error.isNotEmpty) {
           _handleError(error);
         }
       });
-      await _player.open(Media(widget.url, httpHeaders: headers), play: false);
-      await _player.setVolume(_volume * 100);
+      await player.open(Media(widget.url, httpHeaders: headers), play: false);
+      await player.setVolume(_volume * 100);
       if (lastPosition != null && lastPosition! > Duration.zero) {
-        await _player.seek(lastPosition);
+        await player.seek(lastPosition);
       }
-      await _player.play();
+      await player.play();
       if (mounted) {
         setState(() {
           _isInitialized = true;
