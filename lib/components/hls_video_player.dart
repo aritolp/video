@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import 'package:tvplus/player_status.dart';
 import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
@@ -39,7 +38,9 @@ class HlsVideoPlayer extends StatefulWidget {
 
 @NowaGenerated()
 class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
-  VideoPlayerController? _videoPlayerController;
+  Player? _player;
+
+  VideoController? _videoController;
 
   bool _isInitialized = false;
 
@@ -78,6 +79,14 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   bool _showBrightnessIndicator = false;
 
   Timer? _overlayTimer;
+
+  bool _isPlaying = false;
+
+  Duration _position = Duration.zero;
+
+  Duration _duration = Duration.zero;
+
+  bool _isBuffering = false;
 
   @override
   void initState() {
@@ -124,22 +133,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     }
   }
 
-  void _listener() {
-    if (!mounted || _videoPlayerController == null) {
-      return;
-    }
-    final value = _videoPlayerController?.value;
-    if (value!.hasError) {
-      _handleError(value?.errorDescription ?? 'Error desconocido');
-    } else if (value!.isPlaying) {
-      if (_currentStatus != PlayerStatus.playing) {
-        _updateStatus(PlayerStatus.playing, 'En vivo');
-        _retryCount = 0;
-      }
-    }
-    setState(() {});
-  }
-
   void _switchCodec() {
     _currentCodecIndex = (_currentCodecIndex + 1) % _codecs.length;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -161,8 +154,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _currentStatus = status;
     });
     if (status == PlayerStatus.webFallback) {
-      _videoPlayerController?.dispose();
-      _videoPlayerController = null;
+      _player.dispose();
+      _player = null;
+      _videoController = null;
     }
     widget.onStatusChanged?.call(status, message);
   }
@@ -179,18 +173,16 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   Future<void> _seekRelative(Duration offset) async {
-    if (_videoPlayerController == null ||
-        !_videoPlayerController!.value.isInitialized) {
+    if (_player == null || !_isInitialized) {
       return;
     }
-    final newPosition = _videoPlayerController!.value.position + offset;
-    final duration = _videoPlayerController!.value.duration;
+    final newPosition = _position + offset;
     if (newPosition < Duration.zero) {
-      await _videoPlayerController?.seekTo(Duration.zero);
-    } else if (newPosition > duration) {
-      await _videoPlayerController?.seekTo(duration);
+      await _player.seek(Duration.zero);
+    } else if (newPosition > _duration) {
+      await _player.seek(_duration);
     } else {
-      await _videoPlayerController?.seekTo(newPosition);
+      await _player.seek(newPosition);
     }
     _startControlsTimer();
   }
@@ -215,8 +207,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   void dispose() {
     _retryTimer?.cancel();
     _controlsTimer?.cancel();
-    _videoPlayerController?.removeListener(_listener);
-    _videoPlayerController?.dispose();
+    _player.dispose();
     WakelockPlus.disable();
     _playPauseNode.dispose();
     _codecNode.dispose();
@@ -309,12 +300,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   Widget _buildNativePlayer() {
-    final bool hasError =
-        _errorMessage != null ||
-        (_videoPlayerController?.value.hasError ?? false);
+    final bool hasError = _errorMessage != null;
     final String? logoUrl = widget.logoUrl;
-    final bool isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
     return Focus(
       autofocus: true,
       onKeyEvent: (node, event) {
@@ -354,13 +341,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                 colorBlendMode: BlendMode.darken,
               ),
             ),
-          if (_videoPlayerController != null && _isInitialized && !hasError)
-            Center(
-              child: AspectRatio(
-                aspectRatio: _videoPlayerController!.value.aspectRatio,
-                child: VideoPlayer(_videoPlayerController!),
-              ),
-            ),
+          if (_videoController != null && _isInitialized && !hasError)
+            Center(child: Video(controller: _videoController)),
           if (_isInitialized && !hasError) _buildCustomControls(),
           if (_currentStatus == PlayerStatus.retrying ||
               _currentStatus == PlayerStatus.connecting)
@@ -437,11 +419,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   Widget _buildCustomControls() {
-    final bool isPlaying = _videoPlayerController?.value.isPlaying ?? false;
-    final Duration position =
-        _videoPlayerController?.value.position ?? Duration.zero;
-    final Duration duration =
-        _videoPlayerController?.value.duration ?? Duration.zero;
+    final bool isPlaying = _isPlaying;
+    final Duration position = _position;
+    final Duration duration = _duration;
     final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
     return Positioned.fill(
       child: Stack(
@@ -497,11 +477,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                                 : Icons.play_arrow_rounded,
                             size: 40.0,
                             onPressed: () {
-                              setState(() {
-                                isPlaying
-                                    ? _videoPlayerController?.pause()
-                                    : _videoPlayerController?.play();
-                              });
+                              isPlaying ? _player.pause() : _player.play();
                               _startControlsTimer();
                             },
                           ),
@@ -535,13 +511,27 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                     if (isVod)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                        child: VideoProgressIndicator(
-                          _videoPlayerController!,
-                          allowScrubbing: true,
-                          colors: const VideoProgressColors(
-                            playedColor: Colors.red,
-                            bufferedColor: Colors.white24,
-                            backgroundColor: Colors.white10,
+                        child: SliderTheme(
+                          data: const SliderThemeData(
+                            trackHeight: 2.0,
+                            thumbShape: RoundSliderThumbShape(
+                              enabledThumbRadius: 6.0,
+                            ),
+                            activeTrackColor: Colors.red,
+                            inactiveTrackColor: Colors.white24,
+                            thumbColor: Colors.red,
+                          ),
+                          child: Slider(
+                            value: position.inMilliseconds.toDouble().clamp(
+                              0.0,
+                              duration.inMilliseconds.toDouble(),
+                            ),
+                            max: duration.inMilliseconds.toDouble(),
+                            onChanged: (value) {
+                              _player.seek(
+                                Duration(milliseconds: value.toInt()),
+                              );
+                            },
                           ),
                         ),
                       ),
@@ -607,7 +597,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   Future<void> _showAudioMenu() async {
-    if (_videoPlayerController == null) {
+    if (_player == null) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -629,9 +619,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _errorMessage = null;
     });
     try {
-      final Duration? lastPosition = _videoPlayerController?.value.position;
-      _videoPlayerController?.dispose();
+      final Duration? lastPosition = _position;
+      await _player.dispose();
       await WakelockPlus.enable();
+      final PlayerConfiguration configuration;
+      if (_codecs[_currentCodecIndex] == 'Software') {
+        configuration = PlayerConfiguration();
+      } else if (_codecs[_currentCodecIndex] == 'Hardware') {
+        configuration = PlayerConfiguration();
+      } else {
+        configuration = PlayerConfiguration();
+      }
+      _player = Player(configuration: configuration);
+      _videoController = VideoController(_player);
       final Map<String, String> headers = {
         'User-Agent':
             widget.userAgent ??
@@ -643,21 +643,49 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       if (currentReferer != null && currentReferer!.isNotEmpty) {
         headers['Referer'] = currentReferer;
       }
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(widget.url),
-        httpHeaders: headers,
-        videoPlayerOptions: VideoPlayerOptions(
-          allowBackgroundPlayback: true,
-          mixWithOthers: true,
-        ),
-      );
-      await _videoPlayerController?.initialize();
-      _videoPlayerController?.addListener(_listener);
-      await _videoPlayerController?.setVolume(1.0);
+      _player.stream.playing.listen((playing) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = playing;
+          });
+          if (playing && _currentStatus != PlayerStatus.playing) {
+            _updateStatus(PlayerStatus.playing, 'En vivo');
+            _retryCount = 0;
+          }
+        }
+      });
+      _player.stream.position.listen((position) {
+        if (mounted) {
+          setState(() {
+            _position = position;
+          });
+        }
+      });
+      _player.stream.duration.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _duration = duration;
+          });
+        }
+      });
+      _player.stream.buffering.listen((buffering) {
+        if (mounted) {
+          setState(() {
+            _isBuffering = buffering;
+          });
+        }
+      });
+      _player.stream.error.listen((error) {
+        if (mounted && error.isNotEmpty) {
+          _handleError(error);
+        }
+      });
+      await _player.open(Media(widget.url, httpHeaders: headers), play: false);
+      await _player.setVolume(_volume * 100);
       if (lastPosition != null && lastPosition! > Duration.zero) {
-        await _videoPlayerController?.seekTo(lastPosition);
+        await _player.seek(lastPosition);
       }
-      _videoPlayerController?.play();
+      await _player.play();
       if (mounted) {
         setState(() {
           _isInitialized = true;

@@ -9,6 +9,7 @@ import 'package:tvplus/globals/router.dart';
 @NowaGenerated()
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   sharedPrefs = await SharedPreferences.getInstance();
   await SupabaseService().initialize();
   runApp(const MyApp());
