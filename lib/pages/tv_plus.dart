@@ -1108,48 +1108,43 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                       }
                       return KeyEventResult.ignored;
                     },
-                    child: GestureDetector(
-                      onTap: _toggleFullScreen,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding:
-                            (_playerNode.hasFocus && !_isFullScreen && isTV)
-                            ? const EdgeInsets.all(4.0)
-                            : EdgeInsets.zero,
-                        decoration: BoxDecoration(
-                          color:
-                              (_playerNode.hasFocus && !_isFullScreen && isTV)
-                              ? Colors.red
-                              : Colors.transparent,
-                          borderRadius: (_isFullScreen || isLandscape)
-                              ? BorderRadius.zero
-                              : BorderRadius.circular(20.0),
-                        ),
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: (_isFullScreen || isLandscape)
-                                  ? BorderRadius.zero
-                                  : BorderRadius.circular(16.0),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: HlsVideoPlayer(
-                              key: ValueKey('${streamUrl}_${_refreshCount}'),
-                              url: streamUrl,
-                              logoUrl: logoUrl,
-                              userAgent: currentChannel.userAgent,
-                              referer: currentChannel.referer,
-                              onStatusChanged: (status, message) {
-                                if (mounted) {
-                                  setState(() {
-                                    playerStatus = status;
-                                    playerMessage = message;
-                                  });
-                                }
-                              },
-                            ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: (_playerNode.hasFocus && !_isFullScreen && isTV)
+                          ? const EdgeInsets.all(4.0)
+                          : EdgeInsets.zero,
+                      decoration: BoxDecoration(
+                        color: (_playerNode.hasFocus && !_isFullScreen && isTV)
+                            ? Colors.red
+                            : Colors.transparent,
+                        borderRadius: (_isFullScreen || isLandscape)
+                            ? BorderRadius.zero
+                            : BorderRadius.circular(20.0),
+                      ),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: (_isFullScreen || isLandscape)
+                                ? BorderRadius.zero
+                                : BorderRadius.circular(16.0),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: HlsVideoPlayer(
+                            key: ValueKey('${streamUrl}_${_refreshCount}'),
+                            url: streamUrl,
+                            logoUrl: logoUrl,
+                            userAgent: currentChannel.userAgent,
+                            referer: currentChannel.referer,
+                            onStatusChanged: (status, message) {
+                              if (mounted) {
+                                setState(() {
+                                  playerStatus = status;
+                                  playerMessage = message;
+                                });
+                              }
+                            },
                           ),
                         ),
                       ),

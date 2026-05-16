@@ -53,6 +53,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Timer? _retryTimer;
 
+  Timer? _fallbackTimer;
+
   bool _showControls = true;
 
   Timer? _controlsTimer;
@@ -116,6 +118,17 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     });
   }
 
+  void _startFallbackTimer() {
+    _fallbackTimer?.cancel();
+    _fallbackTimer = Timer(const Duration(seconds: 7), () {
+      if (mounted &&
+          _currentStatus != PlayerStatus.playing &&
+          _currentStatus != PlayerStatus.webFallback) {
+        _updateStatus(PlayerStatus.webFallback, 'Modo Alternativo (Timeout)');
+      }
+    });
+  }
+
   void _handleError(String error) {
     if (_currentStatus == PlayerStatus.webFallback) {
       return;
@@ -158,6 +171,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _player?.dispose();
       _player = null;
       _videoController = null;
+      _fallbackTimer?.cancel();
     }
     widget.onStatusChanged?.call(status, message);
   }
@@ -192,6 +206,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   @override
   void dispose() {
     _retryTimer?.cancel();
+    _fallbackTimer?.cancel();
     _controlsTimer?.cancel();
     _player?.dispose();
     WakelockPlus.disable();
@@ -226,7 +241,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   Future<void> _updateVolume(double delta) async {
-    _volume = (_volume + delta).clamp(0.0, 1.0);
+    _volume = (_volume * 100 + delta * 100).clamp(0.0, 100.0) / 100.0;
     if (_player != null) {
       _player?.setVolume(_volume * 100);
     }
@@ -534,6 +549,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     if (_currentStatus == PlayerStatus.webFallback) {
       return;
     }
+    _retryTimer?.cancel();
+    _startFallbackTimer();
     setState(() {
       _isInitialized = false;
       _errorMessage = null;
@@ -565,6 +582,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
           if (playing && _currentStatus != PlayerStatus.playing) {
             _updateStatus(PlayerStatus.playing, 'En vivo');
             _retryCount = 0;
+            _fallbackTimer?.cancel();
           }
         }
       });
@@ -646,6 +664,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             ),
           if (controller != null && _isInitialized && !hasError)
             Center(child: Video(controller: controller)),
+          _buildCustomControls(),
           if (_currentStatus == PlayerStatus.retrying ||
               _currentStatus == PlayerStatus.connecting)
             Positioned(
