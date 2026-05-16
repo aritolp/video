@@ -4,10 +4,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:tvplus/player_status.dart';
 import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
-import 'package:tvplus/components/web_video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:flutter/services.dart';
+import 'package:tvplus/components/web_video_player.dart';
 
 @NowaGenerated()
 class HlsVideoPlayer extends StatefulWidget {
@@ -190,22 +190,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black,
-      child: _currentStatus == PlayerStatus.webFallback
-          ? WebVideoPlayer(
-              key: ValueKey('web_${widget.url}'),
-              url: widget.url,
-              userAgent: widget.userAgent,
-              referer: widget.referer,
-              isMuted: false,
-            )
-          : _buildNativePlayer(),
-    );
-  }
-
-  @override
   void dispose() {
     _retryTimer?.cancel();
     _controlsTimer?.cancel();
@@ -301,78 +285,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _playPauseNode.requestFocus();
       }
     }
-  }
-
-  Widget _buildNativePlayer() {
-    final bool hasError = _errorMessage != null;
-    final String? logoUrl = widget.logoUrl;
-    final controller = _videoController;
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (!_showControls &&
-              (event.logicalKey == LogicalKeyboardKey.arrowUp ||
-                  event.logicalKey == LogicalKeyboardKey.arrowDown ||
-                  event.logicalKey == LogicalKeyboardKey.arrowLeft ||
-                  event.logicalKey == LogicalKeyboardKey.arrowRight ||
-                  event.logicalKey == LogicalKeyboardKey.enter ||
-                  event.logicalKey == LogicalKeyboardKey.select ||
-                  event.logicalKey == LogicalKeyboardKey.accept)) {
-            _toggleControls();
-            return KeyEventResult.handled;
-          }
-          if (event.logicalKey == LogicalKeyboardKey.backspace ||
-              event.logicalKey == LogicalKeyboardKey.escape ||
-              event.logicalKey == LogicalKeyboardKey.goBack) {
-            if (_showControls) {
-              setState(() => _showControls = false);
-              return KeyEventResult.handled;
-            }
-            return KeyEventResult.ignored;
-          }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          if (logoUrl != null && (!_isInitialized || hasError))
-            Positioned.fill(
-              child: Image.network(
-                logoUrl,
-                fit: BoxFit.cover,
-                color: Colors.black.withValues(alpha: 0.5),
-                colorBlendMode: BlendMode.darken,
-              ),
-            ),
-          if (controller != null && _isInitialized && !hasError)
-            Center(child: Video(controller: controller)),
-          if (_isInitialized && !hasError) _buildCustomControls(),
-          if (_currentStatus == PlayerStatus.retrying ||
-              _currentStatus == PlayerStatus.connecting)
-            Positioned(
-              bottom: 80.0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 6.0,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                child: Text(
-                  _currentStatus == PlayerStatus.retrying
-                      ? 'Reconectando...'
-                      : 'Conectando...',
-                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
   }
 
   Widget _controlButton({
@@ -702,5 +614,77 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     } catch (e) {
       _handleError(e.toString());
     }
+  }
+
+  Widget _buildNativePlayer() {
+    final bool hasError = _errorMessage != null;
+    final String? logoUrl = widget.logoUrl;
+    final controller = _videoController;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.backspace ||
+              event.logicalKey == LogicalKeyboardKey.escape ||
+              event.logicalKey == LogicalKeyboardKey.goBack) {
+            return KeyEventResult.ignored;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (logoUrl != null && (!_isInitialized || hasError))
+            Positioned.fill(
+              child: Image.network(
+                logoUrl,
+                fit: BoxFit.cover,
+                color: Colors.black.withValues(alpha: 0.5),
+                colorBlendMode: BlendMode.darken,
+              ),
+            ),
+          if (controller != null && _isInitialized && !hasError)
+            Center(child: Video(controller: controller)),
+          if (_currentStatus == PlayerStatus.retrying ||
+              _currentStatus == PlayerStatus.connecting)
+            Positioned(
+              bottom: 80.0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: 6.0,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+                child: Text(
+                  _currentStatus == PlayerStatus.retrying
+                      ? 'Reconectando...'
+                      : 'Conectando...',
+                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      child: _currentStatus == PlayerStatus.webFallback
+          ? WebVideoPlayer(
+              key: ValueKey('web_${widget.url}'),
+              url: widget.url,
+              userAgent: widget.userAgent,
+              referer: widget.referer,
+              isMuted: false,
+            )
+          : _buildNativePlayer(),
+    );
   }
 }
