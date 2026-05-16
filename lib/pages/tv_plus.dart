@@ -944,14 +944,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     );
   }
 
-  void _toggleFullScreen() {
-    if (!_isFullScreen) {
-      setState(() => _isFullScreen = true);
-    } else {
-      setState(() => _isFullScreen = false);
-    }
-  }
-
   Widget _buildFocusIconButton({
     required FocusNode node,
     required IconData icon,
@@ -989,6 +981,17 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  void _toggleFullScreen() {
+    setState(() {
+      _isFullScreen = !_isFullScreen;
+    });
+    if (_isFullScreen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _playerNode.requestFocus();
+      });
+    }
   }
 
   @override
@@ -1092,10 +1095,23 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                           currentChannel.logo!.isNotEmpty)
                       ? currentChannel.logo
                       : null;
-                  final playerKey = ValueKey(
-                    'player_${streamUrl}_${_refreshCount}',
+                  final playerWidget = HlsVideoPlayer(
+                    key: ValueKey('hls_player_${streamUrl}'),
+                    url: streamUrl,
+                    logoUrl: logoUrl,
+                    userAgent: currentChannel.userAgent,
+                    referer: currentChannel.referer,
+                    onToggleFullScreen: _toggleFullScreen,
+                    onStatusChanged: (status, message) {
+                      if (mounted) {
+                        setState(() {
+                          playerStatus = status;
+                          playerMessage = message;
+                        });
+                      }
+                    },
                   );
-                  final playerWidget = Focus(
+                  final focusedPlayer = Focus(
                     focusNode: _playerNode,
                     onKeyEvent: (node, event) {
                       if (event is KeyDownEvent) {
@@ -1104,7 +1120,8 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                           _toggleFullScreen();
                           return KeyEventResult.handled;
                         }
-                        if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                        if (event.logicalKey == LogicalKeyboardKey.arrowDown &&
+                            !_isFullScreen) {
                           _favBtnNode.requestFocus();
                           return KeyEventResult.handled;
                         }
@@ -1134,22 +1151,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                                 : BorderRadius.circular(16.0),
                           ),
                           clipBehavior: Clip.antiAlias,
-                          child: HlsVideoPlayer(
-                            key: playerKey,
-                            url: streamUrl,
-                            logoUrl: logoUrl,
-                            userAgent: currentChannel.userAgent,
-                            referer: currentChannel.referer,
-                            onToggleFullScreen: _toggleFullScreen,
-                            onStatusChanged: (status, message) {
-                              if (mounted) {
-                                setState(() {
-                                  playerStatus = status;
-                                  playerMessage = message;
-                                });
-                              }
-                            },
-                          ),
+                          child: playerWidget,
                         ),
                       ),
                     ),
@@ -1159,7 +1161,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                       color: Colors.black,
                       width: double.infinity,
                       height: double.infinity,
-                      child: Center(child: playerWidget),
+                      child: focusedPlayer,
                     );
                   }
                   return LayoutBuilder(
@@ -1175,7 +1177,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                                   children: [
                                     Padding(
                                       padding: const EdgeInsets.all(16.0),
-                                      child: playerWidget,
+                                      child: focusedPlayer,
                                     ),
                                     _buildChannelInfo(
                                       currentChannel,
@@ -1206,7 +1208,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16.0,
                               ),
-                              child: playerWidget,
+                              child: focusedPlayer,
                             ),
                             _buildChannelInfo(
                               currentChannel,

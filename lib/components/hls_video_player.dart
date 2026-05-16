@@ -4,10 +4,10 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:tvplus/player_status.dart';
 import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:flutter/services.dart';
 import 'package:tvplus/components/web_video_player.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 @NowaGenerated()
 class HlsVideoPlayer extends StatefulWidget {
@@ -94,20 +94,12 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   bool _isBuffering = false;
 
+  final FocusNode _subtitleNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
     _initializePlayer();
-  }
-
-  @override
-  void didUpdateWidget(HlsVideoPlayer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url) {
-      _retryCount = 0;
-      _currentStatus = PlayerStatus.connecting;
-      _initializePlayer();
-    }
   }
 
   void _startControlsTimer() {
@@ -130,24 +122,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _updateStatus(PlayerStatus.webFallback, 'Modo Alternativo (Timeout)');
       }
     });
-  }
-
-  void _handleError(String error) {
-    if (_currentStatus == PlayerStatus.webFallback) {
-      return;
-    }
-    if (_retryCount < 2) {
-      _retryCount++;
-      _updateStatus(PlayerStatus.retrying, 'Reconectando...');
-      _retryTimer?.cancel();
-      _retryTimer = Timer(const Duration(seconds: 2), () {
-        if (mounted) {
-          _initializePlayer();
-        }
-      });
-    } else {
-      _updateStatus(PlayerStatus.webFallback, 'Modo Alternativo');
-    }
   }
 
   void _switchCodec() {
@@ -204,21 +178,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       await player.seek(newPosition);
     }
     _startControlsTimer();
-  }
-
-  @override
-  void dispose() {
-    _retryTimer?.cancel();
-    _fallbackTimer?.cancel();
-    _controlsTimer?.cancel();
-    _player?.dispose();
-    WakelockPlus.disable();
-    _playPauseNode.dispose();
-    _codecNode.dispose();
-    _rewindNode.dispose();
-    _forwardNode.dispose();
-    _audioNode.dispose();
-    super.dispose();
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details, double width) {
@@ -305,6 +264,133 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     }
   }
 
+  Future<void> _showAudioMenu() async {
+    if (_player == null) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Optimizando pistas de audio y reconectando...'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Colors.blue,
+      ),
+    );
+    _initializePlayer();
+  }
+
+  Widget _buildNativePlayer() {
+    final bool hasError = _errorMessage != null;
+    final String? logoUrl = widget.logoUrl;
+    final controller = _videoController;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent) {
+          if (event.logicalKey == LogicalKeyboardKey.backspace ||
+              event.logicalKey == LogicalKeyboardKey.escape ||
+              event.logicalKey == LogicalKeyboardKey.goBack) {
+            return KeyEventResult.ignored;
+          }
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (logoUrl != null && (!_isInitialized || hasError))
+            Positioned.fill(
+              child: Image.network(
+                logoUrl,
+                fit: BoxFit.cover,
+                color: Colors.black.withValues(alpha: 0.5),
+                colorBlendMode: BlendMode.darken,
+              ),
+            ),
+          if (controller != null && _isInitialized && !hasError)
+            Center(
+              child: Video(controller: controller, controls: NoVideoControls),
+            ),
+          _buildCustomControls(),
+          if (_currentStatus == PlayerStatus.retrying ||
+              _currentStatus == PlayerStatus.connecting)
+            Positioned(
+              bottom: 80.0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: 6.0,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(20.0),
+                ),
+                child: Text(
+                  _currentStatus == PlayerStatus.retrying
+                      ? 'Reconectando...'
+                      : 'Conectando...',
+                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      child: _currentStatus == PlayerStatus.webFallback
+          ? WebVideoPlayer(
+              key: ValueKey('web_${widget.url}'),
+              url: widget.url,
+              userAgent: widget.userAgent,
+              referer: widget.referer,
+              isMuted: false,
+            )
+          : _buildNativePlayer(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(HlsVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _retryCount = 0;
+      _currentStatus = PlayerStatus.connecting;
+      _initializePlayer();
+    }
+  }
+
+  void _handleError(String error) {
+    if (_currentStatus == PlayerStatus.webFallback || !mounted) {
+      return;
+    }
+    debugPrint('Player Error: ${error}');
+    if (_retryTimer?.isActive ?? false) {
+      return;
+    }
+    if (_retryCount < 3) {
+      _retryCount++;
+      _updateStatus(
+        PlayerStatus.retrying,
+        'Reconectando (${_retryCount}/3)...',
+      );
+      _retryTimer?.cancel();
+      _retryTimer = Timer(Duration(seconds: 3 * _retryCount), () {
+        if (mounted) {
+          _initializePlayer();
+        }
+      });
+    } else {
+      _updateStatus(
+        PlayerStatus.webFallback,
+        'Cambiando a Modo Alternativo...',
+      );
+    }
+  }
+
   Widget _controlButton({
     required FocusNode node,
     required IconData icon,
@@ -323,48 +409,38 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         }
         return KeyEventResult.ignored;
       },
-      child: Container(
-        padding: const EdgeInsets.all(2.0),
-        decoration: BoxDecoration(
-          color: node.hasFocus
-              ? Colors.white.withValues(alpha: 0.3)
-              : Colors.transparent,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: node.hasFocus ? Colors.white : Colors.transparent,
-            width: 2.0,
+      child: AnimatedScale(
+        scale: node.hasFocus ? 1.1 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        child: Container(
+          padding: const EdgeInsets.all(2.0),
+          decoration: BoxDecoration(
+            color: node.hasFocus
+                ? Colors.red.withValues(alpha: 0.4)
+                : Colors.transparent,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: node.hasFocus ? Colors.white : Colors.transparent,
+              width: 2.0,
+            ),
+            boxShadow: [
+              if (node.hasFocus)
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.3),
+                  blurRadius: 12.0,
+                  spreadRadius: 2.0,
+                ),
+            ],
           ),
-          boxShadow: [
-            if (node.hasFocus)
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.2),
-                blurRadius: 8.0,
-                spreadRadius: 1.0,
-              ),
-          ],
-        ),
-        child: IconButton(
-          constraints: const BoxConstraints(),
-          padding: const EdgeInsets.all(6.0),
-          icon: Icon(icon, color: Colors.white, size: size),
-          onPressed: onPressed,
+          child: IconButton(
+            constraints: const BoxConstraints(),
+            padding: const EdgeInsets.all(6.0),
+            icon: Icon(icon, color: Colors.white, size: size),
+            onPressed: onPressed,
+          ),
         ),
       ),
     );
-  }
-
-  Future<void> _showAudioMenu() async {
-    if (_player == null) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Optimizando pistas de audio y reconectando...'),
-        duration: Duration(seconds: 2),
-        backgroundColor: Colors.blue,
-      ),
-    );
-    _initializePlayer();
   }
 
   Future<void> _initializePlayer() async {
@@ -373,10 +449,12 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     }
     _retryTimer?.cancel();
     _startFallbackTimer();
-    setState(() {
-      _isInitialized = false;
-      _errorMessage = null;
-    });
+    if (_player == null) {
+      setState(() {
+        _isInitialized = false;
+        _errorMessage = null;
+      });
+    }
     try {
       final Duration? lastPosition = _position;
       await _player?.dispose();
@@ -456,78 +534,94 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     }
   }
 
-  Widget _buildNativePlayer() {
-    final bool hasError = _errorMessage != null;
-    final String? logoUrl = widget.logoUrl;
-    final controller = _videoController;
-    return Focus(
-      autofocus: true,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent) {
-          if (event.logicalKey == LogicalKeyboardKey.backspace ||
-              event.logicalKey == LogicalKeyboardKey.escape ||
-              event.logicalKey == LogicalKeyboardKey.goBack) {
-            return KeyEventResult.ignored;
-          }
-        }
-        return KeyEventResult.ignored;
-      },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          if (logoUrl != null && (!_isInitialized || hasError))
-            Positioned.fill(
-              child: Image.network(
-                logoUrl,
-                fit: BoxFit.cover,
-                color: Colors.black.withValues(alpha: 0.5),
-                colorBlendMode: BlendMode.darken,
-              ),
-            ),
-          if (controller != null && _isInitialized && !hasError)
-            Center(
-              child: Video(controller: controller, controls: NoVideoControls),
-            ),
-          _buildCustomControls(),
-          if (_currentStatus == PlayerStatus.retrying ||
-              _currentStatus == PlayerStatus.connecting)
-            Positioned(
-              bottom: 80.0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 6.0,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-                child: Text(
-                  _currentStatus == PlayerStatus.retrying
-                      ? 'Reconectando...'
-                      : 'Conectando...',
-                  style: const TextStyle(color: Colors.white, fontSize: 10.0),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _subtitleNode.dispose();
+    _retryTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _controlsTimer?.cancel();
+    _player?.dispose();
+    WakelockPlus.disable();
+    _playPauseNode.dispose();
+    _codecNode.dispose();
+    _rewindNode.dispose();
+    _forwardNode.dispose();
+    _audioNode.dispose();
+    super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black,
-      child: _currentStatus == PlayerStatus.webFallback
-          ? WebVideoPlayer(
-              key: ValueKey('web_${widget.url}'),
-              url: widget.url,
-              userAgent: widget.userAgent,
-              referer: widget.referer,
-              isMuted: false,
-            )
-          : _buildNativePlayer(),
+  Future<void> _showSubtitleMenu() async {
+    final player = _player;
+    if (player == null) {
+      return;
+    }
+    final tracks = player.state.tracks.subtitle;
+    if (tracks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No hay subtítulos disponibles para este canal'),
+        ),
+      );
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.black87,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 20.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Subtítulos',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 10.0),
+            ...tracks.map((track) {
+              final isSelected = player.state.track.subtitle == track;
+              return ListTile(
+                leading: Icon(
+                  Icons.subtitles,
+                  color: isSelected ? Colors.red : Colors.white70,
+                ),
+                title: Text(
+                  track.title ??
+                      track.language ??
+                      'Pista ${tracks.indexOf(track)}',
+                  style: TextStyle(
+                    color: isSelected ? Colors.red : Colors.white,
+                  ),
+                ),
+                trailing: isSelected
+                    ? const Icon(Icons.check, color: Colors.red)
+                    : null,
+                onTap: () {
+                  player.setSubtitleTrack(track);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+            ListTile(
+              leading: const Icon(Icons.subtitles_off, color: Colors.white70),
+              title: const Text(
+                'Desactivar Subtítulos',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                player.setSubtitleTrack(SubtitleTrack.no());
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -623,12 +717,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                             ),
                           const SizedBox(width: 20.0),
                           _controlButton(
+                            node: _subtitleNode,
+                            icon: Icons.closed_caption_rounded,
+                            size: 24.0,
+                            onPressed: _showSubtitleMenu,
+                          ),
+                          const SizedBox(width: 12.0),
+                          _controlButton(
                             node: _audioNode,
                             icon: Icons.translate_rounded,
                             size: 24.0,
                             onPressed: _showAudioMenu,
                           ),
-                          const SizedBox(width: 6.0),
+                          const SizedBox(width: 12.0),
                           _controlButton(
                             node: _codecNode,
                             icon: Icons.settings_input_component_rounded,
