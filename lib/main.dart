@@ -1,3 +1,4 @@
+import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
