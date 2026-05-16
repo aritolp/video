@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'package:tvplus/globals/app_state.dart';
 import 'package:tvplus/globals/router.dart';
@@ -14,10 +15,27 @@ main() async {
   runApp(const MyApp());
 }
 
+@NowaGenerated()
+late final SharedPreferences sharedPrefs;
+
 @NowaGenerated({'visibleInNowa': false})
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   @NowaGenerated({'loader': 'auto-constructor'})
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() {
+    return _MyAppState();
+  }
+}
+
+@NowaGenerated()
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    MediaKit.ensureInitialized();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +50,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-@NowaGenerated()
-late final SharedPreferences sharedPrefs;
