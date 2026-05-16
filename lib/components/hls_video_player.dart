@@ -817,7 +817,16 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             _isBuffering = buffering;
           });
           if (wasBuffering && !buffering && !_isPlaying) {
-            _player?.play();
+            final isVod = _duration > Duration.zero && _duration.inSeconds > 0;
+            if (isVod) {
+              _player?.play();
+            } else {
+              _player?.seek(_position + const Duration(milliseconds: 100)).then(
+                (_) {
+                  _player?.play();
+                },
+              );
+            }
           }
         }
       });
