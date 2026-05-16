@@ -1,4 +1,3 @@
-import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
@@ -10,7 +9,6 @@ import 'package:tvplus/globals/router.dart';
 @NowaGenerated()
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
   sharedPrefs = await SharedPreferences.getInstance();
   await SupabaseService().initialize();
   runApp(const MyApp());

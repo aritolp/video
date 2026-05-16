@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:tvplus/player_status.dart';
 import 'dart:async';
@@ -6,7 +7,6 @@ import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:tvplus/components/web_video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
-import 'package:volume_controller/volume_controller.dart';
 import 'package:flutter/services.dart';
 
 @NowaGenerated()
@@ -155,7 +155,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       _currentStatus = status;
     });
     if (status == PlayerStatus.webFallback) {
-      _player.dispose();
+      _player?.dispose();
       _player = null;
       _videoController = null;
     }
@@ -209,7 +209,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   void dispose() {
     _retryTimer?.cancel();
     _controlsTimer?.cancel();
-    _player.dispose();
+    _player?.dispose();
     WakelockPlus.disable();
     _playPauseNode.dispose();
     _codecNode.dispose();
@@ -243,7 +243,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   Future<void> _updateVolume(double delta) async {
     _volume = (_volume + delta).clamp(0.0, 1.0);
-    VolumeController().instance.setVolume(_volume);
+    if (_player != null) {
+      _player?.setVolume(_volume * 100);
+    }
     setState(() {
       _showVolumeIndicator = true;
       _showBrightnessIndicator = false;
@@ -534,7 +536,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                             ),
                             max: duration.inMilliseconds.toDouble(),
                             onChanged: (value) {
-                              player.seek(
+                              player?.seek(
                                 Duration(milliseconds: value.toInt()),
                               );
                             },
@@ -626,9 +628,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     });
     try {
       final Duration? lastPosition = _position;
-      await _player.dispose();
+      await _player?.dispose();
       await WakelockPlus.enable();
-      final PlayerConfiguration configuration = PlayerConfiguration();
+      final PlayerConfiguration configuration = const PlayerConfiguration();
       final player = Player(configuration: configuration);
       _player = player;
       _videoController = VideoController(player);
