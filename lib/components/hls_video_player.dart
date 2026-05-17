@@ -821,11 +821,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             if (isVod) {
               _player?.play();
             } else {
-              _player?.seek(_position + const Duration(milliseconds: 100)).then(
-                (_) {
-                  _player?.play();
-                },
-              );
+              _player?.seek(const Duration(days: 1)).then((_) {
+                _player?.play();
+              });
             }
           }
         }
