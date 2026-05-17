@@ -766,7 +766,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       });
     }
     try {
-      final Duration? lastPosition = _position;
+      final Duration lastPosition = _position;
       await _player?.dispose();
       await WakelockPlus.enable();
       final PlayerConfiguration configuration = const PlayerConfiguration();
@@ -821,7 +821,14 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             if (isVod) {
               _player?.play();
             } else {
-              _initializePlayer();
+              _player?.play();
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted && _player != null && !_isPlaying) {
+                  _player?.seek(const Duration(days: 1)).then((_) {
+                    _player?.play();
+                  });
+                }
+              });
             }
           }
         }
@@ -833,7 +840,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       });
       await player.open(Media(widget.url, httpHeaders: headers), play: false);
       await player.setVolume(_volume * 100);
-      if (lastPosition != null && lastPosition! > Duration.zero) {
+      if (lastPosition > Duration.zero) {
         await player.seek(lastPosition);
       }
       await player.play();
