@@ -2,10 +2,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:provider/provider.dart';
 import 'package:tvplus/globals/app_state.dart';
 import 'package:tvplus/globals/router.dart';
+import 'package:media_kit/media_kit.dart';
 
 @NowaGenerated()
 main() async {
@@ -32,12 +32,6 @@ class MyApp extends StatefulWidget {
 @NowaGenerated()
 class _MyAppState extends State<MyApp> {
   @override
-  void initState() {
-    super.initState();
-    MediaKit.ensureInitialized();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
@@ -48,5 +42,11 @@ class _MyAppState extends State<MyApp> {
         routerConfig: appRouter,
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    MediaKit.ensureInitialized();
   }
 }

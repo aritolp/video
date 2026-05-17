@@ -482,28 +482,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _channelsFuture = SupabaseService().getAllCanales();
-    _loadPreferences();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true);
-    _playerNode.addListener(() => setState(() {}));
-    _channelsTabNode.addListener(() => setState(() {}));
-    _favoritesTabNode.addListener(() => setState(() {}));
-    _aboutTabNode.addListener(() => setState(() {}));
-    _favBtnNode.addListener(() => setState(() {}));
-    _refreshBtnNode.addListener(() => setState(() {}));
-    _logoutBtnNode.addListener(() => setState(() {}));
-    _searchNode.addListener(() => setState(() {}));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppState.of(context, listen: false).loadSavedExternalM3U();
-    });
-  }
-
-  @override
   void dispose() {
     _pulseController.dispose();
     _playerNode.dispose();
@@ -1238,5 +1216,27 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
         );
       },
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _channelsFuture = SupabaseService().getAllCanales();
+    _loadPreferences();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+    _playerNode.addListener(() => setState(() {}));
+    _channelsTabNode.addListener(() => setState(() {}));
+    _favoritesTabNode.addListener(() => setState(() {}));
+    _aboutTabNode.addListener(() => setState(() {}));
+    _favBtnNode.addListener(() => setState(() {}));
+    _refreshBtnNode.addListener(() => setState(() {}));
+    _logoutBtnNode.addListener(() => setState(() {}));
+    _searchNode.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppState.of(context, listen: false).loadSavedExternalM3U();
+    });
   }
 }
