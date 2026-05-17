@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:tvplus/globals/app_state.dart';
 import 'package:tvplus/globals/router.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:tvplus/foreground_task_helper.dart';
 
 @NowaGenerated()
 main() async {
@@ -49,6 +48,5 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     MediaKit.ensureInitialized();
-    ForegroundTaskHelper.init();
   }
 }
