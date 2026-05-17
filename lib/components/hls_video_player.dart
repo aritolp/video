@@ -96,6 +96,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   final FocusNode _subtitleNode = FocusNode();
 
+  final FocusNode _switchPlayerNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -443,22 +445,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
-  @override
-  void dispose() {
-    _subtitleNode.dispose();
-    _retryTimer?.cancel();
-    _fallbackTimer?.cancel();
-    _controlsTimer?.cancel();
-    _player?.dispose();
-    WakelockPlus.disable();
-    _playPauseNode.dispose();
-    _codecNode.dispose();
-    _rewindNode.dispose();
-    _forwardNode.dispose();
-    _audioNode.dispose();
-    super.dispose();
-  }
-
   Future<void> _showSubtitleMenu() async {
     final player = _player;
     if (player == null) {
@@ -534,6 +520,130 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
+  Future<void> _initializePlayer() async {
+    if (_currentStatus == PlayerStatus.webFallback) {
+      return;
+    }
+    _retryTimer?.cancel();
+    _startFallbackTimer();
+    if (_player == null) {
+      setState(() {
+        _isInitialized = false;
+        _errorMessage = null;
+      });
+    }
+    try {
+      final Duration lastPosition = _position;
+      await _player?.dispose();
+      await WakelockPlus.enable();
+      final PlayerConfiguration configuration = const PlayerConfiguration();
+      final player = Player(configuration: configuration);
+      _player = player;
+      _videoController = VideoController(player);
+      final Map<String, String> headers = {
+        'User-Agent':
+            widget.userAgent ??
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+      };
+      final String? currentReferer = widget.referer;
+      if (currentReferer != null && currentReferer!.isNotEmpty) {
+        headers['Referer'] = currentReferer;
+      }
+      player.stream.playing.listen((playing) {
+        if (mounted) {
+          setState(() {
+            _isPlaying = playing;
+          });
+          if (playing && _currentStatus != PlayerStatus.playing) {
+            _updateStatus(PlayerStatus.playing, 'En vivo');
+            _retryCount = 0;
+            _fallbackTimer?.cancel();
+          }
+        }
+      });
+      player.stream.position.listen((position) {
+        if (mounted) {
+          setState(() {
+            _position = position;
+          });
+        }
+      });
+      player.stream.duration.listen((duration) {
+        if (mounted) {
+          setState(() {
+            _duration = duration;
+          });
+        }
+      });
+      player.stream.buffering.listen((buffering) {
+        if (mounted) {
+          final wasBuffering = _isBuffering;
+          setState(() {
+            _isBuffering = buffering;
+          });
+          if (wasBuffering && !buffering && !_isPlaying) {
+            final isVod = _duration > Duration.zero && _duration.inSeconds > 0;
+            if (isVod) {
+              _player?.play();
+            } else {
+              _player?.play();
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted && _player != null && !_isPlaying) {
+                  _player?.seek(const Duration(days: 1)).then((_) {
+                    _player?.play();
+                  });
+                }
+              });
+            }
+          }
+        }
+      });
+      player.stream.error.listen((error) {
+        if (mounted && error.isNotEmpty) {
+          _handleError(error);
+        }
+      });
+      await player.open(Media(widget.url, httpHeaders: headers), play: false);
+      await player.setVolume(_volume * 100);
+      if (lastPosition > Duration.zero) {
+        await player.seek(lastPosition);
+      }
+      await player.play();
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+          _showControls = true;
+        });
+        _startControlsTimer();
+        if (MediaQuery.of(context).navigationMode ==
+            NavigationMode.directional) {
+          _playPauseNode.requestFocus();
+        }
+      }
+    } catch (e) {
+      _handleError(e.toString());
+    }
+  }
+
+  @override
+  void dispose() {
+    _switchPlayerNode.dispose();
+    _subtitleNode.dispose();
+    _retryTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _controlsTimer?.cancel();
+    _player?.dispose();
+    WakelockPlus.disable();
+    _playPauseNode.dispose();
+    _codecNode.dispose();
+    _rewindNode.dispose();
+    _forwardNode.dispose();
+    _audioNode.dispose();
+    super.dispose();
+  }
+
   Widget _buildCustomControls() {
     final bool isPlaying = _isPlaying;
     final Duration position = _position;
@@ -578,12 +688,28 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(16.0),
-                          child: _controlButton(
-                            node: FocusNode(),
-                            icon: Icons.fullscreen_rounded,
-                            onPressed: () {
-                              widget.onToggleFullScreen?.call();
-                            },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _controlButton(
+                                node: _switchPlayerNode,
+                                icon: Icons.swap_calls_rounded,
+                                onPressed: () {
+                                  _updateStatus(
+                                    PlayerStatus.webFallback,
+                                    'Cambiando a Modo Web...',
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 8.0),
+                              _controlButton(
+                                node: FocusNode(),
+                                icon: Icons.fullscreen_rounded,
+                                onPressed: () {
+                                  widget.onToggleFullScreen?.call();
+                                },
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -751,112 +877,5 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         ],
       ),
     );
-  }
-
-  Future<void> _initializePlayer() async {
-    if (_currentStatus == PlayerStatus.webFallback) {
-      return;
-    }
-    _retryTimer?.cancel();
-    _startFallbackTimer();
-    if (_player == null) {
-      setState(() {
-        _isInitialized = false;
-        _errorMessage = null;
-      });
-    }
-    try {
-      final Duration lastPosition = _position;
-      await _player?.dispose();
-      await WakelockPlus.enable();
-      final PlayerConfiguration configuration = const PlayerConfiguration();
-      final player = Player(configuration: configuration);
-      _player = player;
-      _videoController = VideoController(player);
-      final Map<String, String> headers = {
-        'User-Agent':
-            widget.userAgent ??
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
-      };
-      final String? currentReferer = widget.referer;
-      if (currentReferer != null && currentReferer!.isNotEmpty) {
-        headers['Referer'] = currentReferer;
-      }
-      player.stream.playing.listen((playing) {
-        if (mounted) {
-          setState(() {
-            _isPlaying = playing;
-          });
-          if (playing && _currentStatus != PlayerStatus.playing) {
-            _updateStatus(PlayerStatus.playing, 'En vivo');
-            _retryCount = 0;
-            _fallbackTimer?.cancel();
-          }
-        }
-      });
-      player.stream.position.listen((position) {
-        if (mounted) {
-          setState(() {
-            _position = position;
-          });
-        }
-      });
-      player.stream.duration.listen((duration) {
-        if (mounted) {
-          setState(() {
-            _duration = duration;
-          });
-        }
-      });
-      player.stream.buffering.listen((buffering) {
-        if (mounted) {
-          final wasBuffering = _isBuffering;
-          setState(() {
-            _isBuffering = buffering;
-          });
-          if (wasBuffering && !buffering && !_isPlaying) {
-            final isVod = _duration > Duration.zero && _duration.inSeconds > 0;
-            if (isVod) {
-              _player?.play();
-            } else {
-              _player?.play();
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted && _player != null && !_isPlaying) {
-                  _player?.seek(const Duration(days: 1)).then((_) {
-                    _player?.play();
-                  });
-                }
-              });
-            }
-          }
-        }
-      });
-      player.stream.error.listen((error) {
-        if (mounted && error.isNotEmpty) {
-          _handleError(error);
-        }
-      });
-      await player.open(Media(widget.url, httpHeaders: headers), play: false);
-      await player.setVolume(_volume * 100);
-      if (lastPosition > Duration.zero) {
-        await player.seek(lastPosition);
-      }
-      await player.play();
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-          _showControls = true;
-        });
-        _startControlsTimer();
-        if (MediaQuery.of(context).navigationMode ==
-            NavigationMode.directional) {
-          _playPauseNode.requestFocus();
-        }
-      }
-    } catch (e) {
-      _handleError(e.toString());
-    }
   }
 }

@@ -67,9 +67,16 @@ class _WebVideoPlayerState extends State<WebVideoPlayer> {
     if (referer != null && referer!.isNotEmpty) {
       headers['Referer'] = referer;
     }
+    String effectiveUrl = widget.url;
+    if (effectiveUrl.toLowerCase().contains('.ts')) {
+      effectiveUrl = effectiveUrl.replaceAll(
+        RegExp('\\.ts', caseSensitive: false),
+        '.m3u8',
+      );
+    }
     return webview.InAppWebView(
       initialUrlRequest: webview.URLRequest(
-        url: webview.WebUri(widget.url),
+        url: webview.WebUri(effectiveUrl),
         headers: headers,
       ),
       initialSettings: webview.InAppWebViewSettings(
