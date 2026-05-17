@@ -28,6 +28,7 @@ dependencies:
   volume_controller: ^3.0.2
   audio_service: ^0.18.12
   just_audio: ^0.9.42
+  flutter_foreground_task: ^6.2.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

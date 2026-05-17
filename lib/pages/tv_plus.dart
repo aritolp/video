@@ -465,22 +465,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     }
   }
 
-  void _onChannelSelected(listaDeCanales channel) {
-    AppState.of(context, listen: false).setSelectedChannel(channel);
-    if (mounted) {
-      setState(() {
-        playerMessage = 'Cargando...';
-        playerStatus = PlayerStatus.connecting;
-      });
-    }
-    if (channel.id != null && channel.id! > 0) {
-      sharedPrefs.setInt('last_channel_id', channel.id ?? 0);
-      SupabaseService().updateLastChannel(channel.id ?? 0);
-    } else if (channel.url_stream != null) {
-      sharedPrefs.setInt('last_channel_id', channel.id ?? -1);
-    }
-  }
-
   @override
   void dispose() {
     _pulseController.dispose();
@@ -1238,5 +1222,21 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppState.of(context, listen: false).loadSavedExternalM3U();
     });
+  }
+
+  void _onChannelSelected(listaDeCanales channel) {
+    AppState.of(context, listen: false).setSelectedChannel(channel);
+    if (mounted) {
+      setState(() {
+        playerMessage = 'Cargando...';
+        playerStatus = PlayerStatus.connecting;
+      });
+    }
+    if (channel.id != null && channel.id! > 0) {
+      sharedPrefs.setInt('last_channel_id', channel.id ?? 0);
+      SupabaseService().updateLastChannel(channel.id ?? 0);
+    } else if (channel.url_stream != null) {
+      sharedPrefs.setInt('last_channel_id', channel.id ?? -1);
+    }
   }
 }

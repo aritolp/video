@@ -8,6 +8,7 @@ import 'package:screen_brightness/screen_brightness.dart';
 import 'package:flutter/services.dart';
 import 'package:tvplus/components/web_video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:tvplus/foreground_task_helper.dart';
 
 @NowaGenerated()
 class HlsVideoPlayer extends StatefulWidget {
@@ -492,23 +493,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
-  @override
-  void dispose() {
-    _switchPlayerNode.dispose();
-    _subtitleNode.dispose();
-    _retryTimer?.cancel();
-    _fallbackTimer?.cancel();
-    _controlsTimer?.cancel();
-    _player?.dispose();
-    WakelockPlus.disable();
-    _playPauseNode.dispose();
-    _codecNode.dispose();
-    _rewindNode.dispose();
-    _forwardNode.dispose();
-    _audioNode.dispose();
-    super.dispose();
-  }
-
   Widget _buildCustomControls() {
     final bool isPlaying = _isPlaying;
     final Duration position = _position;
@@ -817,6 +801,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             _updateStatus(PlayerStatus.playing, 'En vivo');
             _retryCount = 0;
             _fallbackTimer?.cancel();
+            ForegroundTaskHelper.start(widget.url.split('/').last);
           }
         }
       });
@@ -889,5 +874,23 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         _handleError(e.toString());
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _switchPlayerNode.dispose();
+    _subtitleNode.dispose();
+    _retryTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _controlsTimer?.cancel();
+    _player?.dispose();
+    WakelockPlus.disable();
+    _playPauseNode.dispose();
+    _codecNode.dispose();
+    _rewindNode.dispose();
+    _forwardNode.dispose();
+    _audioNode.dispose();
+    ForegroundTaskHelper.stop();
+    super.dispose();
   }
 }
