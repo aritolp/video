@@ -1153,6 +1153,9 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.grey[900],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
         title: const Text(
           'Configurar M3U',
           style: TextStyle(color: Colors.white),
@@ -1176,30 +1179,42 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                     _loadNode.requestFocus();
                     return KeyEventResult.handled;
                   }
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    _fileNode.requestFocus();
+                    return KeyEventResult.handled;
+                  }
                   return KeyEventResult.ignored;
                 },
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: _urlNode.hasFocus ? Colors.red : Colors.white24,
-                      width: 2.0,
-                    ),
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: TextField(
-                    controller: controller,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'http://...',
-                      hintStyle: const TextStyle(color: Colors.white24),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.05),
-                      border: OutlineInputBorder(
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    _urlNode.addListener(() => setState(() {}));
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: _urlNode.hasFocus
+                              ? Colors.red
+                              : Colors.white24,
+                          width: 2.0,
+                        ),
                         borderRadius: BorderRadius.circular(8.0),
-                        borderSide: BorderSide.none,
                       ),
-                    ),
-                  ),
+                      child: TextField(
+                        controller: controller,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'http://...',
+                          hintStyle: const TextStyle(color: Colors.white24),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.05),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: 20.0),
@@ -1230,23 +1245,60 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                     _handleM3UFileLoad(appState);
                     return KeyEventResult.handled;
                   }
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                    _urlNode.requestFocus();
+                    return KeyEventResult.handled;
+                  }
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                    _loadNode.requestFocus();
+                    return KeyEventResult.handled;
+                  }
                   return KeyEventResult.ignored;
                 },
-                child: OutlinedButton.icon(
-                  onPressed: () => _handleM3UFileLoad(appState),
-                  icon: const Icon(Icons.file_upload_outlined),
-                  label: const Text('SELECCIONAR ARCHIVO .M3U'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: BorderSide(
-                      color: _fileNode.hasFocus ? Colors.red : Colors.white24,
-                      width: 2.0,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    _fileNode.addListener(() => setState(() {}));
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(
+                          color: _fileNode.hasFocus
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 2.0,
+                        ),
+                      ),
+                      child: ElevatedButton.icon(
+                        onPressed: () => _handleM3UFileLoad(appState),
+                        icon: Icon(
+                          Icons.file_upload_outlined,
+                          color: _fileNode.hasFocus
+                              ? Colors.white
+                              : Colors.white70,
+                        ),
+                        label: Text(
+                          'SELECCIONAR ARCHIVO .M3U',
+                          style: TextStyle(
+                            color: _fileNode.hasFocus
+                                ? Colors.white
+                                : Colors.white70,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _fileNode.hasFocus
+                              ? Colors.red
+                              : Colors.white.withValues(alpha: 0.05),
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          elevation: _fileNode.hasFocus ? 8.0 : 0.0,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -1269,6 +1321,11 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                         Navigator.pop(context);
                         return KeyEventResult.handled;
                       }
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                        _fileNode.requestFocus();
+                        return KeyEventResult.handled;
+                      }
                       return KeyEventResult.ignored;
                     },
                     child: TextButton(
@@ -1277,8 +1334,11 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                         'CANCELAR',
                         style: TextStyle(
                           color: _cancelNode.hasFocus
-                              ? Colors.red
+                              ? Colors.white
                               : Colors.white54,
+                          fontWeight: _cancelNode.hasFocus
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -1291,6 +1351,11 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                           (event.logicalKey == LogicalKeyboardKey.enter ||
                               event.logicalKey == LogicalKeyboardKey.select)) {
                         _handleM3ULoad(appState, controller.text.trim());
+                        return KeyEventResult.handled;
+                      }
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.arrowUp) {
+                        _fileNode.requestFocus();
                         return KeyEventResult.handled;
                       }
                       return KeyEventResult.ignored;
@@ -1307,6 +1372,7 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                               : Colors.transparent,
                           width: 2.0,
                         ),
+                        elevation: _loadNode.hasFocus ? 8.0 : 0.0,
                       ),
                       child: const Text('CARGAR URL'),
                     ),
