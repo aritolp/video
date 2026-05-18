@@ -728,14 +728,40 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
+  @override
+  void dispose() {
+    _switchPlayerNode.dispose();
+    _subtitleNode.dispose();
+    _retryTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _controlsTimer?.cancel();
+    _player?.dispose();
+    WakelockPlus.disable();
+    _playPauseNode.dispose();
+    _codecNode.dispose();
+    _rewindNode.dispose();
+    _forwardNode.dispose();
+    _audioNode.dispose();
+    ForegroundTaskHelper.stop();
+    super.dispose();
+  }
+
   void _handleError(String error) {
     if (_currentStatus == PlayerStatus.webFallback || !mounted) {
       return;
     }
     debugPrint('Player Error: ${error}');
-    if (error.contains('Already opened') ||
-        error.contains('Buffering') ||
-        error.contains('Stop')) {
+    final ignoredErrors = [
+      'Already opened',
+      'Buffering',
+      'Stop',
+      'Nothing to play',
+      'Seeking',
+    ];
+    if (ignoredErrors.any((e) => error.contains(e))) {
+      return;
+    }
+    if (_isPlaying && _currentStatus == PlayerStatus.playing) {
       return;
     }
     if (_retryTimer?.isActive ?? false) {
@@ -748,7 +774,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         'Reconectando (${_retryCount}/3)...',
       );
       _retryTimer?.cancel();
-      _retryTimer = Timer(Duration(seconds: 4 * _retryCount), () {
+      _retryTimer = Timer(Duration(seconds: 5 * _retryCount), () {
         if (mounted) {
           _initializePlayer();
         }
@@ -766,8 +792,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       return;
     }
     _retryTimer?.cancel();
-    _startFallbackTimer();
-    if (_player == null) {
+    if (_player == null || !_isInitialized) {
+      _startFallbackTimer();
       setState(() {
         _isInitialized = false;
         _errorMessage = null;
@@ -797,7 +823,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
           setState(() {
             _isPlaying = playing;
           });
-          if (playing && _currentStatus != PlayerStatus.playing) {
+          if (playing) {
             _updateStatus(PlayerStatus.playing, 'En vivo');
             _retryCount = 0;
             _fallbackTimer?.cancel();
@@ -826,29 +852,13 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             _isBuffering = buffering;
           });
           if (wasBuffering && !buffering && !_isPlaying) {
-            final isVod = _duration > Duration.zero && _duration.inSeconds > 0;
-            if (isVod) {
-              _player?.play();
-            } else {
-              _player?.play();
-              Future.delayed(const Duration(milliseconds: 500), () {
-                if (mounted && _player != null && !_isPlaying) {
-                  _player?.seek(const Duration(days: 1)).then((_) {
-                    _player?.play();
-                  });
-                }
-              });
-            }
+            _player?.play();
           }
         }
       });
       player.stream.error.listen((error) {
         if (mounted && error.isNotEmpty) {
-          if (!error.contains('Already opened') &&
-              !error.contains('Buffering') &&
-              !error.contains('Stop')) {
-            _handleError(error);
-          }
+          _handleError(error);
         }
       });
       await player.open(Media(widget.url, httpHeaders: headers), play: false);
@@ -860,37 +870,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       if (mounted) {
         setState(() {
           _isInitialized = true;
-          _showControls = true;
+          if (_retryCount == 0) {
+            _showControls = true;
+            _startControlsTimer();
+          }
         });
-        _startControlsTimer();
-        if (MediaQuery.of(context).navigationMode ==
-            NavigationMode.directional) {
+        if (_retryCount == 0 &&
+            MediaQuery.of(context).navigationMode ==
+                NavigationMode.directional) {
           _playPauseNode.requestFocus();
         }
       }
     } catch (e) {
-      if (!e.toString().contains('already') &&
-          !e.toString().contains('playing')) {
-        _handleError(e.toString());
-      }
+      _handleError(e.toString());
     }
-  }
-
-  @override
-  void dispose() {
-    _switchPlayerNode.dispose();
-    _subtitleNode.dispose();
-    _retryTimer?.cancel();
-    _fallbackTimer?.cancel();
-    _controlsTimer?.cancel();
-    _player?.dispose();
-    WakelockPlus.disable();
-    _playPauseNode.dispose();
-    _codecNode.dispose();
-    _rewindNode.dispose();
-    _forwardNode.dispose();
-    _audioNode.dispose();
-    ForegroundTaskHelper.stop();
-    super.dispose();
   }
 }
