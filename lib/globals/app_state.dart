@@ -178,23 +178,6 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void clearExternalM3U() {
-    _externalChannels = [];
-    sharedPrefs.remove('external_m3u_url');
-    notifyListeners();
-  }
-
-  Future<void> loadSavedExternalM3U() async {
-    final savedUrl = sharedPrefs.getString('external_m3u_url');
-    if (savedUrl != null && savedUrl!.isNotEmpty) {
-      try {
-        await loadExternalM3U(savedUrl);
-      } catch (e) {
-        debugPrint('Failed to load saved M3U on startup: ${e}');
-      }
-    }
-  }
-
   Future<void> loadExternalM3U(String url) async {
     Timer? simulationTimer;
     try {
@@ -230,5 +213,68 @@ class AppState extends ChangeNotifier {
       debugPrint('Error loading external M3U: ${e}');
       rethrow;
     }
+  }
+
+  Future<void> loadSavedExternalM3U() async {
+    final savedUrl = sharedPrefs.getString('external_m3u_url');
+    final savedPath = sharedPrefs.getString('external_m3u_path');
+    if (savedUrl != null && savedUrl!.isNotEmpty) {
+      try {
+        await loadExternalM3U(savedUrl);
+      } catch (e) {
+        debugPrint('Failed to load saved M3U URL on startup: ${e}');
+      }
+    } else if (savedPath != null && savedPath!.isNotEmpty) {
+      try {
+        await loadExternalM3UFromFile(savedPath);
+      } catch (e) {
+        debugPrint('Failed to load saved M3U File on startup: ${e}');
+      }
+    }
+  }
+
+  Future<void> loadExternalM3UFromFile(String path) async {
+    Timer? simulationTimer;
+    try {
+      _m3uProgress = 0.05;
+      notifyListeners();
+      simulationTimer = Timer.periodic(const Duration(milliseconds: 300), (
+        timer,
+      ) {
+        if (_m3uProgress < 0.92) {
+          _m3uProgress += 0.05;
+          notifyListeners();
+        } else {
+          timer.cancel();
+        }
+      });
+      final channels = await SupabaseService().parseM3UFromFile(path);
+      simulationTimer?.cancel();
+      _m3uProgress = 0.95;
+      notifyListeners();
+      _externalChannels = channels;
+      await Future.delayed(const Duration(milliseconds: 500));
+      _m3uProgress = 1.0;
+      sharedPrefs.remove('external_m3u_url');
+      sharedPrefs.setString('external_m3u_path', path);
+      notifyListeners();
+      Future.delayed(const Duration(seconds: 2), () {
+        _m3uProgress = 0.0;
+        notifyListeners();
+      });
+    } catch (e) {
+      simulationTimer?.cancel();
+      _m3uProgress = 0.0;
+      notifyListeners();
+      debugPrint('Error loading external M3U file: ${e}');
+      rethrow;
+    }
+  }
+
+  void clearExternalM3U() {
+    _externalChannels = [];
+    sharedPrefs.remove('external_m3u_url');
+    sharedPrefs.remove('external_m3u_path');
+    notifyListeners();
   }
 }

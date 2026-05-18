@@ -5,6 +5,7 @@ import 'package:tvplus/models/lista_de_canales.dart';
 import 'package:tvplus/main.dart';
 import 'package:flutter/material.dart';
 import 'package:tvplus/models/app_info.dart';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 @NowaGenerated()
@@ -206,5 +207,19 @@ class SupabaseService {
       }
     }
     return channels;
+  }
+
+  Future<List<listaDeCanales>> parseM3UFromFile(String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        return parseM3UString(content);
+      }
+      throw Exception('El archivo no existe en la ruta proporcionada');
+    } catch (e) {
+      debugPrint('Error en parseM3UFromFile: ${e}');
+      rethrow;
+    }
   }
 }

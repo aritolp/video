@@ -16,5 +16,12 @@
     "experimental": {
         "load_packages": true
     },
-    "permissions": []
+    "permissions": [
+        {
+            "key": "android.permission.READ_EXTERNAL_STORAGE"
+        },
+        {
+            "key": "android.permission.WRITE_EXTERNAL_STORAGE"
+        }
+    ]
 }
