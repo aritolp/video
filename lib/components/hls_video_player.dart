@@ -778,7 +778,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                     const Spacer(),
                     if (isVod)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
                         child: Focus(
                           focusNode: _sliderNode,
                           onKeyEvent: (node, event) {
@@ -798,9 +798,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                           },
                           child: SliderTheme(
                             data: SliderThemeData(
-                              trackHeight: 4.0,
+                              trackHeight: 3.0,
                               thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 8.0,
+                                enabledThumbRadius: 6.0,
                               ),
                               activeTrackColor: Colors.red,
                               inactiveTrackColor: Colors.white24,
@@ -833,57 +833,44 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12.0,
+                              fontSize: 13.0,
                             ),
                           ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0,
-                                  vertical: 4.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isVod
-                                      ? Colors.blueAccent.withOpacity(0.8)
-                                      : Colors.red,
-                                  borderRadius: BorderRadius.circular(4.0),
-                                ),
-                                child: Text(
-                                  isVod ? 'VIDEO' : 'EN VIVO',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.0,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0,
+                              vertical: 3.0,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isVod
+                                  ? Colors.blueAccent.withOpacity(0.6)
+                                  : Colors.red.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(4.0),
+                              border: Border.all(
+                                color: Colors.white24,
+                                width: 0.5,
                               ),
-                              const SizedBox(width: 12.0),
-                              Text(
-                                isVod
-                                    ? _formatDuration(duration)
-                                    : _formatDuration(position),
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (isVod)
-                            Text(
-                              _formatDuration(duration),
+                            ),
+                            child: Text(
+                              isVod ? 'VIDEO' : 'LIVE',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12.0,
+                                fontSize: 9.0,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.8,
                               ),
-                            )
-                          else
-                            const SizedBox(width: 40.0),
+                            ),
+                          ),
+                          Text(
+                            isVod
+                                ? _formatDuration(duration)
+                                : _formatDuration(position),
+                            style: TextStyle(
+                              color: isVod ? Colors.white : Colors.white70,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.0,
+                            ),
+                          ),
                         ],
                       ),
                     ),
