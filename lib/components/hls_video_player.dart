@@ -79,7 +79,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   double _brightness = 0.5;
 
-  double _volume = 0.5;
+  double _volume = 1.0;
 
   bool _showVolumeIndicator = false;
 
@@ -98,6 +98,10 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   final FocusNode _subtitleNode = FocusNode();
 
   final FocusNode _switchPlayerNode = FocusNode();
+
+  final FocusNode _fullscreenNode = FocusNode();
+
+  final FocusNode _sliderNode = FocusNode();
 
   @override
   void initState() {
@@ -366,58 +370,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     }
   }
 
-  Widget _controlButton({
-    required FocusNode node,
-    required IconData icon,
-    required void Function() onPressed,
-    double size = 32,
-  }) {
-    return Focus(
-      focusNode: node,
-      onKeyEvent: (node, event) {
-        if (event is KeyDownEvent &&
-            (event.logicalKey == LogicalKeyboardKey.enter ||
-                event.logicalKey == LogicalKeyboardKey.select ||
-                event.logicalKey == LogicalKeyboardKey.accept)) {
-          onPressed();
-          return KeyEventResult.handled;
-        }
-        return KeyEventResult.ignored;
-      },
-      child: AnimatedScale(
-        scale: node.hasFocus ? 1.1 : 1.0,
-        duration: const Duration(milliseconds: 200),
-        child: Container(
-          padding: const EdgeInsets.all(2.0),
-          decoration: BoxDecoration(
-            color: node.hasFocus
-                ? Colors.red.withValues(alpha: 0.4)
-                : Colors.transparent,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: node.hasFocus ? Colors.white : Colors.transparent,
-              width: 2.0,
-            ),
-            boxShadow: [
-              if (node.hasFocus)
-                BoxShadow(
-                  color: Colors.red.withValues(alpha: 0.3),
-                  blurRadius: 12.0,
-                  spreadRadius: 2.0,
-                ),
-            ],
-          ),
-          child: IconButton(
-            constraints: const BoxConstraints(),
-            padding: const EdgeInsets.all(6.0),
-            icon: Icon(icon, color: Colors.white, size: size),
-            onPressed: onPressed,
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _showSubtitleMenu() async {
     final player = _player;
     if (player == null) {
@@ -491,259 +443,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
         ),
       ),
     );
-  }
-
-  Widget _buildCustomControls() {
-    final bool isPlaying = _isPlaying;
-    final Duration position = _position;
-    final Duration duration = _duration;
-    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
-    final player = _player;
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          GestureDetector(
-            onVerticalDragUpdate: (details) => _onVerticalDragUpdate(
-              details,
-              MediaQuery.of(context).size.width,
-            ),
-            onTap: _toggleControls,
-          ),
-          if (_showVolumeIndicator || _showBrightnessIndicator)
-            Center(
-              child: _showVolumeIndicator
-                  ? _buildGestureIndicator(
-                      Icons.volume_up,
-                      _volume,
-                      Colors.blue,
-                    )
-                  : _buildGestureIndicator(
-                      Icons.brightness_6,
-                      _brightness,
-                      Colors.orange,
-                    ),
-            ),
-          AnimatedOpacity(
-            opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: IgnorePointer(
-              ignoring: !_showControls,
-              child: Container(
-                color: Colors.black45,
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _controlButton(
-                                node: _switchPlayerNode,
-                                icon: Icons.swap_calls_rounded,
-                                onPressed: () {
-                                  _updateStatus(
-                                    PlayerStatus.webFallback,
-                                    'Cambiando a Modo Web...',
-                                  );
-                                },
-                              ),
-                              const SizedBox(width: 8.0),
-                              _controlButton(
-                                node: FocusNode(),
-                                icon: Icons.fullscreen_rounded,
-                                onPressed: () {
-                                  widget.onToggleFullScreen?.call();
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    FocusTraversalGroup(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isVod)
-                            _controlButton(
-                              node: _rewindNode,
-                              icon: Icons.replay_10_rounded,
-                              size: 24.0,
-                              onPressed: () =>
-                                  _seekRelative(const Duration(seconds: -10)),
-                            ),
-                          const SizedBox(width: 12.0),
-                          _controlButton(
-                            node: _playPauseNode,
-                            icon: isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 40.0,
-                            onPressed: () {
-                              if (player != null) {
-                                isPlaying ? player.pause() : player.play();
-                              }
-                              _startControlsTimer();
-                            },
-                          ),
-                          const SizedBox(width: 12.0),
-                          if (isVod)
-                            _controlButton(
-                              node: _forwardNode,
-                              icon: Icons.forward_10_rounded,
-                              size: 24.0,
-                              onPressed: () =>
-                                  _seekRelative(const Duration(seconds: 10)),
-                            ),
-                          const SizedBox(width: 20.0),
-                          _controlButton(
-                            node: _subtitleNode,
-                            icon: Icons.closed_caption_rounded,
-                            size: 24.0,
-                            onPressed: _showSubtitleMenu,
-                          ),
-                          const SizedBox(width: 12.0),
-                          _controlButton(
-                            node: _audioNode,
-                            icon: Icons.translate_rounded,
-                            size: 24.0,
-                            onPressed: _showAudioMenu,
-                          ),
-                          const SizedBox(width: 12.0),
-                          _controlButton(
-                            node: _codecNode,
-                            icon: Icons.settings_input_component_rounded,
-                            size: 24.0,
-                            onPressed: _switchCodec,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    if (isVod)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                        child: SliderTheme(
-                          data: const SliderThemeData(
-                            trackHeight: 2.0,
-                            thumbShape: RoundSliderThumbShape(
-                              enabledThumbRadius: 6.0,
-                            ),
-                            activeTrackColor: Colors.red,
-                            inactiveTrackColor: Colors.white24,
-                            thumbColor: Colors.red,
-                          ),
-                          child: Slider(
-                            value: position.inMilliseconds.toDouble().clamp(
-                              0.0,
-                              duration.inMilliseconds.toDouble(),
-                            ),
-                            max: duration.inMilliseconds.toDouble(),
-                            onChanged: (value) {
-                              player?.seek(
-                                Duration(milliseconds: value.toInt()),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40.0,
-                        vertical: 12.0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _formatDuration(position),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11.0,
-                            ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6.0,
-                                  vertical: 2.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isVod
-                                      ? Colors.blueAccent.withValues(alpha: 0.8)
-                                      : Colors.red,
-                                  borderRadius: BorderRadius.circular(4.0),
-                                ),
-                                child: Text(
-                                  isVod ? 'VIDEO' : 'EN VIVO',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8.0,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8.0),
-                              Text(
-                                isVod
-                                    ? _formatDuration(duration)
-                                    : _formatDuration(position),
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 10.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (isVod)
-                            Text(
-                              _formatDuration(duration),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11.0,
-                              ),
-                            )
-                          else
-                            const SizedBox(width: 40.0),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _switchPlayerNode.dispose();
-    _subtitleNode.dispose();
-    _retryTimer?.cancel();
-    _fallbackTimer?.cancel();
-    _controlsTimer?.cancel();
-    _player?.dispose();
-    WakelockPlus.disable();
-    _playPauseNode.dispose();
-    _codecNode.dispose();
-    _rewindNode.dispose();
-    _forwardNode.dispose();
-    _audioNode.dispose();
-    ForegroundTaskHelper.stop();
-    super.dispose();
   }
 
   void _handleError(String error) {
@@ -884,5 +583,331 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     } catch (e) {
       _handleError(e.toString());
     }
+  }
+
+  @override
+  void dispose() {
+    _switchPlayerNode.dispose();
+    _subtitleNode.dispose();
+    _fullscreenNode.dispose();
+    _sliderNode.dispose();
+    _retryTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _controlsTimer?.cancel();
+    _player?.dispose();
+    WakelockPlus.disable();
+    _playPauseNode.dispose();
+    _codecNode.dispose();
+    _rewindNode.dispose();
+    _forwardNode.dispose();
+    _audioNode.dispose();
+    ForegroundTaskHelper.stop();
+    super.dispose();
+  }
+
+  Widget _controlButton({
+    required FocusNode node,
+    required IconData icon,
+    required void Function() onPressed,
+    double size = 32,
+  }) {
+    return Focus(
+      focusNode: node,
+      onKeyEvent: (node, event) {
+        if (event is KeyDownEvent &&
+            (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select ||
+                event.logicalKey == LogicalKeyboardKey.accept)) {
+          onPressed();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: GestureDetector(
+        onTap: onPressed,
+        child: AnimatedScale(
+          scale: node.hasFocus ? 1.1 : 1.0,
+          duration: const Duration(milliseconds: 200),
+          child: Container(
+            padding: const EdgeInsets.all(2.0),
+            decoration: BoxDecoration(
+              color: node.hasFocus
+                  ? Colors.red.withOpacity(0.4)
+                  : Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: node.hasFocus ? Colors.white : Colors.transparent,
+                width: 2.0,
+              ),
+              boxShadow: [
+                if (node.hasFocus)
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.3),
+                    blurRadius: 12.0,
+                    spreadRadius: 2.0,
+                  ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(6.0),
+              child: Icon(icon, color: Colors.white, size: size),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomControls() {
+    final bool isPlaying = _isPlaying;
+    final Duration position = _position;
+    final Duration duration = _duration;
+    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
+    final player = _player;
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          GestureDetector(
+            onVerticalDragUpdate: (details) => _onVerticalDragUpdate(
+              details,
+              MediaQuery.of(context).size.width,
+            ),
+            onTap: _toggleControls,
+            behavior: HitTestBehavior.opaque,
+          ),
+          AnimatedOpacity(
+            opacity: _showControls ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: IgnorePointer(
+              ignoring: !_showControls,
+              child: Container(
+                color: Colors.black45,
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _controlButton(
+                                node: _switchPlayerNode,
+                                icon: Icons.swap_calls_rounded,
+                                onPressed: () {
+                                  _updateStatus(
+                                    PlayerStatus.webFallback,
+                                    'Cambiando a Modo Web...',
+                                  );
+                                },
+                              ),
+                              const SizedBox(width: 8.0),
+                              _controlButton(
+                                node: _fullscreenNode,
+                                icon: Icons.fullscreen_rounded,
+                                onPressed: () {
+                                  widget.onToggleFullScreen?.call();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    FocusTraversalGroup(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isVod)
+                            _controlButton(
+                              node: _rewindNode,
+                              icon: Icons.replay_10_rounded,
+                              size: 24.0,
+                              onPressed: () =>
+                                  _seekRelative(const Duration(seconds: -10)),
+                            ),
+                          const SizedBox(width: 12.0),
+                          _controlButton(
+                            node: _playPauseNode,
+                            icon: isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 40.0,
+                            onPressed: () {
+                              if (player != null) {
+                                isPlaying ? player.pause() : player.play();
+                              }
+                              _startControlsTimer();
+                            },
+                          ),
+                          const SizedBox(width: 12.0),
+                          if (isVod)
+                            _controlButton(
+                              node: _forwardNode,
+                              icon: Icons.forward_10_rounded,
+                              size: 24.0,
+                              onPressed: () =>
+                                  _seekRelative(const Duration(seconds: 10)),
+                            ),
+                          const SizedBox(width: 20.0),
+                          _controlButton(
+                            node: _subtitleNode,
+                            icon: Icons.closed_caption_rounded,
+                            size: 24.0,
+                            onPressed: _showSubtitleMenu,
+                          ),
+                          const SizedBox(width: 12.0),
+                          _controlButton(
+                            node: _audioNode,
+                            icon: Icons.translate_rounded,
+                            size: 24.0,
+                            onPressed: _showAudioMenu,
+                          ),
+                          const SizedBox(width: 12.0),
+                          _controlButton(
+                            node: _codecNode,
+                            icon: Icons.settings_input_component_rounded,
+                            size: 24.0,
+                            onPressed: _switchCodec,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    if (isVod)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        child: Focus(
+                          focusNode: _sliderNode,
+                          onKeyEvent: (node, event) {
+                            if (event is KeyDownEvent) {
+                              if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowLeft) {
+                                _seekRelative(const Duration(seconds: -10));
+                                return KeyEventResult.handled;
+                              }
+                              if (event.logicalKey ==
+                                  LogicalKeyboardKey.arrowRight) {
+                                _seekRelative(const Duration(seconds: 10));
+                                return KeyEventResult.handled;
+                              }
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: SliderTheme(
+                            data: SliderThemeData(
+                              trackHeight: 4.0,
+                              thumbShape: const RoundSliderThumbShape(
+                                enabledThumbRadius: 8.0,
+                              ),
+                              activeTrackColor: Colors.red,
+                              inactiveTrackColor: Colors.white24,
+                              thumbColor: Colors.red,
+                              overlayColor: Colors.red.withOpacity(0.2),
+                            ),
+                            child: Slider(
+                              value: position.inMilliseconds.toDouble().clamp(
+                                0.0,
+                                duration.inMilliseconds.toDouble(),
+                              ),
+                              max: duration.inMilliseconds.toDouble(),
+                              onChanged: (value) {
+                                player?.seek(
+                                  Duration(milliseconds: value.toInt()),
+                                );
+                                _startControlsTimer();
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(40.0, 0.0, 40.0, 20.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _formatDuration(position),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.0,
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                  vertical: 4.0,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isVod
+                                      ? Colors.blueAccent.withOpacity(0.8)
+                                      : Colors.red,
+                                  borderRadius: BorderRadius.circular(4.0),
+                                ),
+                                child: Text(
+                                  isVod ? 'VIDEO' : 'EN VIVO',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.0,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12.0),
+                              Text(
+                                isVod
+                                    ? _formatDuration(duration)
+                                    : _formatDuration(position),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (isVod)
+                            Text(
+                              _formatDuration(duration),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.0,
+                              ),
+                            )
+                          else
+                            const SizedBox(width: 40.0),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (_showVolumeIndicator || _showBrightnessIndicator)
+            Center(
+              child: _showVolumeIndicator
+                  ? _buildGestureIndicator(
+                      Icons.volume_up,
+                      _volume,
+                      Colors.blue,
+                    )
+                  : _buildGestureIndicator(
+                      Icons.brightness_6,
+                      _brightness,
+                      Colors.orange,
+                    ),
+            ),
+        ],
+      ),
+    );
   }
 }
