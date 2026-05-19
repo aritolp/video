@@ -6,9 +6,9 @@ import 'dart:async';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:flutter/services.dart';
-import 'package:tvplus/components/web_video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:tvplus/foreground_task_helper.dart';
+import 'package:tvplus/components/web_video_player.dart';
 
 @NowaGenerated()
 class HlsVideoPlayer extends StatefulWidget {
@@ -341,22 +341,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
             ),
         ],
       ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black,
-      child: _currentStatus == PlayerStatus.webFallback
-          ? WebVideoPlayer(
-              key: ValueKey('web_${widget.url}'),
-              url: widget.url,
-              userAgent: widget.userAgent,
-              referer: widget.referer,
-              isMuted: false,
-            )
-          : _buildNativePlayer(),
     );
   }
 
@@ -894,6 +878,25 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                     ),
             ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Container(
+        color: Colors.black,
+        child: _currentStatus == PlayerStatus.webFallback
+            ? WebVideoPlayer(
+                key: ValueKey('web_${widget.url}'),
+                url: widget.url,
+                userAgent: widget.userAgent,
+                referer: widget.referer,
+                isMuted: false,
+              )
+            : _buildNativePlayer(),
       ),
     );
   }
