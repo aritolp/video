@@ -642,6 +642,25 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Container(
+        color: Colors.black,
+        child: _currentStatus == PlayerStatus.webFallback
+            ? WebVideoPlayer(
+                key: ValueKey('web_${widget.url}'),
+                url: widget.url,
+                userAgent: widget.userAgent,
+                referer: widget.referer,
+                isMuted: false,
+              )
+            : _buildNativePlayer(),
+      ),
+    );
+  }
+
   Widget _buildCustomControls() {
     final bool isPlaying = _isPlaying;
     final Duration position = _position;
@@ -820,31 +839,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                               fontSize: 13.0,
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
-                              vertical: 3.0,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isVod
-                                  ? Colors.blueAccent.withOpacity(0.6)
-                                  : Colors.red.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(4.0),
-                              border: Border.all(
-                                color: Colors.white24,
-                                width: 0.5,
-                              ),
-                            ),
-                            child: Text(
-                              isVod ? 'VIDEO' : 'LIVE',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ),
                           Text(
                             isVod
                                 ? _formatDuration(duration)
@@ -878,25 +872,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                     ),
             ),
         ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Container(
-        color: Colors.black,
-        child: _currentStatus == PlayerStatus.webFallback
-            ? WebVideoPlayer(
-                key: ValueKey('web_${widget.url}'),
-                url: widget.url,
-                userAgent: widget.userAgent,
-                referer: widget.referer,
-                isMuted: false,
-              )
-            : _buildNativePlayer(),
       ),
     );
   }

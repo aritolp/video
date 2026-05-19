@@ -3,11 +3,11 @@ import 'package:tvplus/models/lista_de_canales.dart';
 import 'package:tvplus/player_status.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tvplus/main.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tvplus/globals/app_state.dart';
+import 'package:flutter/services.dart';
 import 'package:tvplus/components/category_chip.dart';
 import 'package:tvplus/components/channel_card.dart';
 import 'package:tvplus/components/hls_video_player.dart';
@@ -82,22 +82,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
       _channelsFuture = SupabaseService().getAllCanales();
       playerMessage = 'Recargando...';
       _refreshCount++;
-    });
-  }
-
-  void _handleSystemUI(bool isLandscape) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (isLandscape || _isFullScreen) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      } else {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      }
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
     });
   }
 
@@ -236,125 +220,6 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildChannelInfo(
-    listaDeCanales currentChannel,
-    Color favoriteColor,
-    bool isFavorite,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  currentChannel.nombre ?? 'Canal sin nombre',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4.0),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        'Señal: ${currentChannel.categoria ?? 'En vivo'}',
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 11.0,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 12.0),
-                    FadeTransition(
-                      opacity: playerStatus == PlayerStatus.connecting
-                          ? _pulseController
-                          : const AlwaysStoppedAnimation(1),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8.0,
-                          vertical: 3.0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getBadgeColor().withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4.0),
-                          border: Border.all(
-                            color: _getBadgeColor().withValues(alpha: 0.5),
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6.0,
-                              height: 6.0,
-                              decoration: BoxDecoration(
-                                color: _getBadgeColor(),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6.0),
-                            Flexible(
-                              child: Text(
-                                playerMessage.toUpperCase(),
-                                style: TextStyle(
-                                  color: _getBadgeColor(),
-                                  fontSize: 9.0,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Row(
-            children: [
-              _buildFocusIconButton(
-                node: _favBtnNode,
-                icon: isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite
-                    ? favoriteColor
-                    : (_favBtnNode.hasFocus ? Colors.white : Colors.white38),
-                onPressed: () => _toggleFavorite(currentChannel.id ?? 0),
-              ),
-              _buildFocusIconButton(
-                node: _refreshBtnNode,
-                icon: Icons.refresh,
-                color: _refreshBtnNode.hasFocus ? Colors.white : Colors.white54,
-                onPressed: _refreshChannels,
-              ),
-              _buildFocusIconButton(
-                node: _logoutBtnNode,
-                icon: Icons.logout,
-                color: _logoutBtnNode.hasFocus ? Colors.white : Colors.white54,
-                onPressed: _logout,
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -1380,6 +1245,149 @@ class _TvPlusState extends State<TvPlus> with TickerProviderStateMixin {
                 ],
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleSystemUI(bool isLandscape) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (isLandscape || _isFullScreen) {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      } else {
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.black,
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
+        );
+      }
+    });
+  }
+
+  Widget _buildChannelInfo(
+    listaDeCanales currentChannel,
+    Color favoriteColor,
+    bool isFavorite,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 0.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            currentChannel.nombre ?? 'Canal sin nombre',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22.0,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8.0),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Señal: ${currentChannel.categoria ?? 'En vivo'}',
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 11.0,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12.0),
+                    FadeTransition(
+                      opacity: playerStatus == PlayerStatus.connecting
+                          ? _pulseController
+                          : const AlwaysStoppedAnimation(1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 3.0,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getBadgeColor().withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4.0),
+                          border: Border.all(
+                            color: _getBadgeColor().withValues(alpha: 0.5),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6.0,
+                              height: 6.0,
+                              decoration: BoxDecoration(
+                                color: _getBadgeColor(),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6.0),
+                            Flexible(
+                              child: Text(
+                                playerMessage.toUpperCase(),
+                                style: TextStyle(
+                                  color: _getBadgeColor(),
+                                  fontSize: 9.0,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  _buildFocusIconButton(
+                    node: _favBtnNode,
+                    icon: isFavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isFavorite
+                        ? favoriteColor
+                        : (_favBtnNode.hasFocus
+                              ? Colors.white
+                              : Colors.white38),
+                    onPressed: () => _toggleFavorite(currentChannel.id ?? 0),
+                  ),
+                  _buildFocusIconButton(
+                    node: _refreshBtnNode,
+                    icon: Icons.refresh,
+                    color: _refreshBtnNode.hasFocus
+                        ? Colors.white
+                        : Colors.white54,
+                    onPressed: _refreshChannels,
+                  ),
+                  _buildFocusIconButton(
+                    node: _logoutBtnNode,
+                    icon: Icons.logout,
+                    color: _logoutBtnNode.hasFocus
+                        ? Colors.white
+                        : Colors.white54,
+                    onPressed: _logout,
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),

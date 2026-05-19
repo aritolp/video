@@ -478,12 +478,24 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final data = MediaQuery.of(context);
+      final double shortestSide = data.size.shortestSide;
+      final bool isTV =
+          shortestSide >= 600 ||
+          data.navigationMode == NavigationMode.directional;
+      if (isTV) {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      } else {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+        ]);
+      }
+    });
     _emailNode.addListener(() => setState(() {}));
     _passwordNode.addListener(() => setState(() {}));
     _nombreNode.addListener(() => setState(() {}));
