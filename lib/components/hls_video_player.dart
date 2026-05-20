@@ -651,7 +651,35 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ),
     );
   }
-  
+  @override
+  Widget build(BuildContext context) {
+    // Detecta la orientación actual del dispositivo
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
+    if (!isLandscape) {
+      // Si el teléfono regresa a vertical, obliga a restaurar las barras del sistema
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual, 
+        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Container(
+        color: Colors.black,
+        child: _currentStatus == PlayerStatus.webFallback
+            ? WebVideoPlayer(
+                key: ValueKey('web_${widget.url}'),
+                url: widget.url,
+                userAgent: widget.userAgent,
+                referer: widget.referer,
+                isMuted: false,
+              )
+            : _buildNativePlayer(),
+      ),
+    );
+  }
   Widget _buildCustomControls() {
     final bool isPlaying = _isPlaying;
     final Duration position = _position;
