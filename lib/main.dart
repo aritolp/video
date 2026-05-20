@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tvplus/globals/app_state.dart';
@@ -49,4 +50,11 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     MediaKit.ensureInitialized();
   }
-}
+
+  @override
+  void dispose() {
+    //reestablece la visibilidad de la barra del sistema
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlays.values);
+    super.dispose();
+  }
+} //esta es la llave que cierra la clase_MyAppState
