@@ -54,7 +54,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     //reestablece la visibilidad de la barra del sistema
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlays.values);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     super.dispose();
   }
 } //esta es la llave que cierra la clase_MyAppState
