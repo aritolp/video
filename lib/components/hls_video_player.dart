@@ -641,9 +641,49 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ),
     );
   }
-
-  @override
+    @override
+  void dispose() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual, 
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    _retryTimer?.cancel();
+    _fallbackTimer?.cancel();
+    _controlsTimer?.cancel();
+    _overlayTimer?.cancel();
+    WakelockPlus.disable();
+    ForegroundTaskHelper.stopForegroundTask();
+    _player?.dispose();
+    _switchPlayerNode.dispose();
+    _subtitleNode.dispose();
+    _fullscreenNode.dispose();
+    _sliderNode.dispose();
+    _playPauseNode.dispose();
+    _codecNode.dispose();
+    _rewindNode.dispose();
+    _forwardNode.dispose();
+    _audioNode.dispose();
+    super.dispose();
+  }
+   @override
   Widget build(BuildContext context) {
+    // Detecta la orientación actual del dispositivo
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
+    if (!isLandscape) {
+      // Si el teléfono regresa a vertical, obliga a restaurar las barras del sistema
+      SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual, 
+        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Container(
@@ -660,6 +700,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ),
     );
   }
+
 
   Widget _buildCustomControls() {
     final bool isPlaying = _isPlaying;
@@ -706,19 +747,30 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                                 },
                               ),
                               const SizedBox(width: 8.0),
-                              _controlButton(
-                                node: _fullscreenNode,
-                                icon: Icons.fullscreen_rounded,
-                                onPressed: () {
-                                  widget.onToggleFullScreen?.call();
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
+                        _controlButton(
+              node: _fullscreenNode,
+              icon: Icons.fullscreen_rounded,
+                            onPressed: () async {
+                widget.onToggleFullScreen?.call();
+                await Future.delayed(const Duration(milliseconds: 250));
+                if (mounted) {
+                  final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+                  if (isLandscape) {
+                    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+                  } else {
+                    SystemChrome.setEnabledSystemUIMode(
+                      SystemUiMode.manual, 
+                      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+                    );
+                  }
+               },
+             ),
+           ],
+         ),
+       ),
+     ],
+   ),                     
+                     const Spacer(),
                     FocusTraversalGroup(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -875,4 +927,4 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ),
     );
   }
-}
+                          }
