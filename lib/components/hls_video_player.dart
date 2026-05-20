@@ -571,6 +571,16 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
 
   @override
   void dispose() {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual, 
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+    );
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _switchPlayerNode.dispose();
     _subtitleNode.dispose();
     _fullscreenNode.dispose();
@@ -688,29 +698,30 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                               ),
                               const SizedBox(width: 8.0),
                         _controlButton(
-              node: _fullscreenNode,
-              icon: Icons.fullscreen_rounded,
-                            onPressed: () async {
-                              widget.onToggleFullScreen?.call();
-                              await Future.delayed(const Duration(milliseconds: 250));
-                              if (mounted) {
-                                final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-                                if (isLandscape) {
-                                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-                                flavor: } else {
-                                  SystemChrome.setEnabledSystemUIMode(
-                                    SystemUiMode.manual, 
-                                    overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-                                  );
-                                }
-                              }
-                            },
+                                node: _fullscreenNode,
+                                icon: Icons.fullscreen_rounded,
+                                onPressed: () async {
+                                  widget.onToggleFullScreen?.call();
+                                  await Future.delayed(const Duration(milliseconds: 250));
+                                  if (mounted) {
+                                    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+                                    if (isLandscape) {
+                                      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+                                    } else {
+                                      SystemChrome.setEnabledSystemUIMode(
+                                        SystemUiMode.manual, 
+                                        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+                                      );
+                                    }
+                                  }
+                                },
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),                     
+                                   
                      const Spacer(),
                     FocusTraversalGroup(
                       child: Row(
