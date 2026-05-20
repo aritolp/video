@@ -641,67 +641,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ),
     );
   }
-    @override
-  void dispose() {
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual, 
-      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-    );
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    _retryTimer?.cancel();
-    _fallbackTimer?.cancel();
-    _controlsTimer?.cancel();
-    _overlayTimer?.cancel();
-    WakelockPlus.disable();
-    ForegroundTaskHelper.stopForegroundTask();
-    _player?.dispose();
-    _switchPlayerNode.dispose();
-    _subtitleNode.dispose();
-    _fullscreenNode.dispose();
-    _sliderNode.dispose();
-    _playPauseNode.dispose();
-    _codecNode.dispose();
-    _rewindNode.dispose();
-    _forwardNode.dispose();
-    _audioNode.dispose();
-    super.dispose();
-  }
-   @override
-  Widget build(BuildContext context) {
-    // Detecta la orientación actual del dispositivo
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-    
-    if (!isLandscape) {
-      // Si el teléfono regresa a vertical, obliga a restaurar las barras del sistema
-      SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual, 
-        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Container(
-        color: Colors.black,
-        child: _currentStatus == PlayerStatus.webFallback
-            ? WebVideoPlayer(
-                key: ValueKey('web_${widget.url}'),
-                url: widget.url,
-                userAgent: widget.userAgent,
-                referer: widget.referer,
-                isMuted: false,
-              )
-            : _buildNativePlayer(),
-      ),
-    );
-  }
-
-
+  
   Widget _buildCustomControls() {
     final bool isPlaying = _isPlaying;
     final Duration position = _position;
