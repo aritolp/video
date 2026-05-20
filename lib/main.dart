@@ -49,12 +49,24 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     MediaKit.ensureInitialized();
+
+    // 1. Fuerza la visibilidad de la barra de notificaciones y navegación desde el inicio
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual, 
+      overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom]
+    );
+
+    // 2. Desbloquea todas las orientaciones para activar el sensor de giro
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
   }
 
   @override
   void dispose() {
-    //reestablece la visibilidad de la barra del sistema
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     super.dispose();
   }
-} //esta es la llave que cierra la clase_MyAppState
+}
