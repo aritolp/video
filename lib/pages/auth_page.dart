@@ -18,31 +18,20 @@ class AuthPage extends StatefulWidget {
 @NowaGenerated()
 class _AuthPageState extends State<AuthPage> {
   final _emailController = TextEditingController();
-
   final _passwordController = TextEditingController();
-
   final _nombreController = TextEditingController();
-
   final _codeController = TextEditingController();
 
   bool _isLogin = true;
-
   bool _isLoading = false;
-
   bool _useCode = false;
 
   final FocusNode _emailNode = FocusNode();
-
   final FocusNode _passwordNode = FocusNode();
-
   final FocusNode _nombreNode = FocusNode();
-
   final FocusNode _codeNode = FocusNode();
-
   final FocusNode _submitNode = FocusNode();
-
   final FocusNode _toggleCodeNode = FocusNode();
-
   final FocusNode _toggleModeNode = FocusNode();
 
   @override
@@ -234,8 +223,7 @@ class _AuthPageState extends State<AuthPage> {
                         if (event is KeyDownEvent &&
                             (event.logicalKey == LogicalKeyboardKey.enter ||
                                 event.logicalKey == LogicalKeyboardKey.select ||
-                                event.logicalKey ==
-                                    LogicalKeyboardKey.accept)) {
+                                event.logicalKey == LogicalKeyboardKey.accept)) {
                           _handleAuth();
                           return KeyEventResult.handled;
                         }
@@ -250,39 +238,49 @@ class _AuthPageState extends State<AuthPage> {
                           boxShadow: [
                             if (_submitNode.hasFocus)
                               BoxShadow(
-                                color: Colors.red.withValues(alpha: 0.4),
+                                color: Colors.red.withValues(alpha: 0.3),
                                 blurRadius: 15.0,
-                                spreadRadius: 2.0,
+                                offset: const Offset(0, 4),
                               ),
                           ],
                         ),
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _handleAuth,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                            side: BorderSide(
-                              color: _submitNode.hasFocus
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              width: 3.0,
-                            ),
+                        child: TextButton(
+                          onPressed: _handleAuth,
+                          style: TextButton.styleFrom(
+                            backgroundColor: _submitNode.hasFocus
+                                ? Colors.red
+                                : Colors.white.withValues(alpha: 0.05),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16.0),
                             ),
-                            elevation: 0.0,
+                            side: BorderSide(
+                              color: _submitNode.hasFocus
+                                  ? Colors.white
+                                  : Colors.white10,
+                              width: 2.0,
+                            ),
                           ),
                           child: _isLoading
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white,
+                              ? const SizedBox(
+                                  height: 24.0,
+                                  width: 24.0,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
                                 )
                               : Text(
                                   _useCode
-                                      ? 'Validar Código'
-                                      : (_isLogin ? 'Entrar' : 'Registrarse'),
-                                  style: const TextStyle(
+                                      ? 'Validar código'
+                                      : (_isLogin ? 'Ingresar' : 'Registrar'),
+                                  style: TextStyle(
+                                    color: Colors.white,
                                     fontSize: 16.0,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: _submitNode.hasFocus
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
                                 ),
                         ),
@@ -307,17 +305,13 @@ class _AuthPageState extends State<AuthPage> {
                                 event.logicalKey == LogicalKeyboardKey.select ||
                                 event.logicalKey ==
                                     LogicalKeyboardKey.accept)) {
-                          setState(() {
-                            _useCode = !_useCode;
-                          });
+                          setState(() => _useCode = !_useCode);
                           return KeyEventResult.handled;
                         }
                         return KeyEventResult.ignored;
                       },
                       child: TextButton(
-                        onPressed: () => setState(() {
-                          _useCode = !_useCode;
-                        }),
+                        onPressed: () => setState(() => _useCode = !_useCode),
                         style: TextButton.styleFrom(
                           side: BorderSide(
                             color: _toggleCodeNode.hasFocus
@@ -360,8 +354,7 @@ class _AuthPageState extends State<AuthPage> {
                         onKeyEvent: (node, event) {
                           if (event is KeyDownEvent &&
                               (event.logicalKey == LogicalKeyboardKey.enter ||
-                                  event.logicalKey ==
-                                      LogicalKeyboardKey.select ||
+                                  event.logicalKey == LogicalKeyboardKey.select ||
                                   event.logicalKey ==
                                       LogicalKeyboardKey.accept)) {
                             setState(() => _isLogin = !_isLogin);
@@ -478,10 +471,6 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void initState() {
     super.initState();
-    
-    // ELIMINADO: Quitamos todo el bloque de addPostFrameCallback con MediaQuery y SystemChrome
-    // que rompía las orientaciones en TV y causaba el volteo en teléfonos.
-
     _emailNode.addListener(() => setState(() {}));
     _passwordNode.addListener(() => setState(() {}));
     _nombreNode.addListener(() => setState(() {}));
@@ -489,7 +478,6 @@ class _AuthPageState extends State<AuthPage> {
     _submitNode.addListener(() => setState(() {}));
     _toggleCodeNode.addListener(() => setState(() {}));
     _toggleModeNode.addListener(() => setState(() {}));
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_useCode) {
         _codeNode.requestFocus();
@@ -500,3 +488,4 @@ class _AuthPageState extends State<AuthPage> {
       }
     });
   }
+} // Cierre definitivo de la clase _AuthPageState
