@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tvplus/integrations/supabase_service.dart';
 import 'package:nowa_runtime/nowa_runtime.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart'; // Asegúrate de tener este import
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tvplus/globals/app_state.dart';
@@ -11,6 +11,17 @@ import 'package:media_kit/media_kit.dart';
 @NowaGenerated()
 main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1. FORZAR ORIENTACIÓN HORIZONTAL DE INMEDIATO
+  // Esto anula cualquier configuración automática que Nowa intente inyectar después
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
+  // 2. INICIALIZACIÓN DE MOTOR DE VIDEO EN EL MAIN
+  MediaKit.ensureInitialized();
+
   sharedPrefs = await SharedPreferences.getInstance();
   await SupabaseService().initialize();
   runApp(const MyApp());
@@ -48,13 +59,13 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    MediaKit.ensureInitialized();
+    // Limpio: quitamos MediaKit de aquí para evitar el bug de escala
   }
 
   @override
   void dispose() {
-    //reestablece la visibilidad de la barra del sistema
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     super.dispose();
+    // Limpio: quitamos el SystemChrome.setEnabledSystemUIMode de aquí 
+    // porque rompía la interfaz al renderizar la app raíz
   }
-} //esta es la llave que cierra la clase_MyAppState
+}
