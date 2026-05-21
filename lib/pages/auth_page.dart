@@ -478,24 +478,10 @@ class _AuthPageState extends State<AuthPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final data = MediaQuery.of(context);
-      final double shortestSide = data.size.shortestSide;
-      final bool isTV =
-          shortestSide >= 600 ||
-          data.navigationMode == NavigationMode.directional;
-      if (isTV) {
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
-      } else {
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-        ]);
-      }
-    });
+    
+    // ELIMINADO: Quitamos todo el bloque de addPostFrameCallback con MediaQuery y SystemChrome
+    // que rompía las orientaciones en TV y causaba el volteo en teléfonos.
+
     _emailNode.addListener(() => setState(() {}));
     _passwordNode.addListener(() => setState(() {}));
     _nombreNode.addListener(() => setState(() {}));
@@ -503,6 +489,7 @@ class _AuthPageState extends State<AuthPage> {
     _submitNode.addListener(() => setState(() {}));
     _toggleCodeNode.addListener(() => setState(() {}));
     _toggleModeNode.addListener(() => setState(() {}));
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_useCode) {
         _codeNode.requestFocus();
@@ -513,4 +500,3 @@ class _AuthPageState extends State<AuthPage> {
       }
     });
   }
-}
