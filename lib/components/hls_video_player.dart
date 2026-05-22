@@ -681,12 +681,28 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ),
     );
   }
+  Future<void> _restoreSystemUI() async {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    if (mounted) {
+      await SystemChrome.setEnabledSystemUIMode(
+        SystemUiMode.manual, 
+        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+      );
+    }
+  }
+
+  // 2. CONTROLES DEL REPRODUCTOR (Ya corregidos y limpios)
   Widget _buildCustomControls() {
-  final bool isPlaying = _isPlaying;
-  final Duration position = _position;
-  final Duration duration = _duration;
-  final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
-  final player = _player;
+    final bool isPlaying = _isPlaying;
+    final Duration position = _position;
+    final Duration duration = _duration;
+    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
+    final player = _player;
   
   // Detectamos si es una TV para apagar gestos táctiles conflictivos
   final bool isTvMode = MediaQuery.of(context).navigationMode == NavigationMode.directional;
