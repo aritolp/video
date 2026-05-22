@@ -897,4 +897,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ],
     ),
   );
-}
+} // Cierra _buildCustomControls()
+
+} // <- AGREGA ESTA LLAVE AQUÍ para cerrar definitivamente la clase _HlsVideoPlayerState
