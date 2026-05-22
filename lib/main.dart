@@ -15,7 +15,7 @@ main() async {
   // 1. FORZAR ORIENTACIÓN HORIZONTAL DE INMEDIATO
   // Esto anula cualquier configuración automática que Nowa intente inyectar después
   await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
+    DeviceOrientation.fullSensor,
   ]);
 
   // 2. INICIALIZACIÓN DE MOTOR DE VIDEO EN EL MAIN
