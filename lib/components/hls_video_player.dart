@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:tvplus/player_status.dart';
@@ -145,24 +146,19 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   void _updateStatus(PlayerStatus status, String message) {
-  if (!mounted) return;
-
-  // CORRECCIÓN DE SEGURIDAD PARA TV: Quita el foco de todos los botones antes de cambiar de reproductor
-  if (status == PlayerStatus.webFallback) {
-    FocusManager.instance.primaryFocus?.unfocus(); 
-  }
-
-  setState(() {
-    _currentStatus = status;
-  });
-
-  if (status == PlayerStatus.webFallback) {
-    _player?.dispose();
-    _player = null;
-    _videoController = null;
-    _fallbackTimer?.cancel();
-  }
-  widget.onStatusChanged?.call(status, message);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _currentStatus = status;
+    });
+    if (status == PlayerStatus.webFallback) {
+      _player?.dispose();
+      _player = null;
+      _videoController = null;
+      _fallbackTimer?.cancel();
+    }
+    widget.onStatusChanged?.call(status, message);
   }
 
   String _formatDuration(Duration duration) {
@@ -699,7 +695,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     child: Stack(
       children: [
         GestureDetector(
-          // CORRECCIÓN 1: Desactivado por completo en TV para evitar interferencias con el D-Pad
           onVerticalDragUpdate: isTvMode 
               ? null 
               : (details) => _onVerticalDragUpdate(details, MediaQuery.of(context).size.width),
@@ -738,20 +733,28 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                               node: _fullscreenNode,
                               icon: Icons.fullscreen_rounded,
                               onPressed: () async {
+                                // Notificamos a Nowa Dev para alternar el estado de pantalla
                                 widget.onToggleFullScreen?.call();
                                 
-                                // CORRECCIÓN 2: Pequeña espera para dar tiempo a que cambie al WebViewer alternativo
+                                // Si es Android TV, no alteramos orientaciones ni barras del sistema
+                                if (isTvMode) return;
+
+                                // Espera estratégica para sincronizar con la animación de Nowa
                                 await Future.delayed(const Duration(milliseconds: 250));
                                 if (!mounted) return;
 
                                 final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+                                
                                 if (isLandscape) {
-                                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+                                  // Usamos nuestra función secuencial limpia con delay integrado para salir a Portrait
+                                  await _restoreSystemUI();
                                 } else {
-                                  SystemChrome.setEnabledSystemUIMode(
-                                    SystemUiMode.manual, 
-                                    overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-                                  );
+                                  // Al entrar a Landscape, ocultamos todo instantáneamente
+                                  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+                                  await SystemChrome.setPreferredOrientations([
+                                    DeviceOrientation.landscapeLeft,
+                                    DeviceOrientation.landscapeRight,
+                                  ]);
                                 }
                               },
                             ),
@@ -760,7 +763,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                       ),
                     ],
                   ),
-                                 
                   const Spacer(),
                   FocusTraversalGroup(
                     child: Row(
@@ -771,12 +773,15 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                             node: _rewindNode,
                             icon: Icons.replay_10_rounded,
                             size: 24.0,
-                            onPressed: () => _seekRelative(const Duration(seconds: -10)),
+                            onPressed: () =>
+                                _seekRelative(const Duration(seconds: -10)),
                           ),
                         const SizedBox(width: 12.0),
                         _controlButton(
                           node: _playPauseNode,
-                          icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          icon: isPlaying
+                              ? Icons.pause_rounded
+                              : Icons.play_arrow_rounded,
                           size: 40.0,
                           onPressed: () {
                             if (player != null) {
@@ -791,7 +796,8 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                             node: _forwardNode,
                             icon: Icons.forward_10_rounded,
                             size: 24.0,
-                            onPressed: () => _seekRelative(const Duration(seconds: 10)),
+                            onPressed: () =>
+                                _seekRelative(const Duration(seconds: 10)),
                           ),
                         const SizedBox(width: 20.0),
                         _controlButton(
@@ -825,11 +831,13 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                         focusNode: _sliderNode,
                         onKeyEvent: (node, event) {
                           if (event is KeyDownEvent) {
-                            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                            if (event.logicalKey ==
+                                LogicalKeyboardKey.arrowLeft) {
                               _seekRelative(const Duration(seconds: -10));
                               return KeyEventResult.handled;
                             }
-                            if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                            if (event.logicalKey ==
+                                LogicalKeyboardKey.arrowRight) {
                               _seekRelative(const Duration(seconds: 10));
                               return KeyEventResult.handled;
                             }
@@ -839,7 +847,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                         child: SliderTheme(
                           data: SliderThemeData(
                             trackHeight: 3.0,
-                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 6.0,
+                            ),
                             activeTrackColor: Colors.red,
                             inactiveTrackColor: Colors.white24,
                             thumbColor: Colors.red,
@@ -847,13 +857,15 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                           ),
                           child: Slider(
                             value: position.inMilliseconds.toDouble().clamp(
-                                  0.0,
-                                  duration.inMilliseconds.toDouble(),
-                                ),
+                              0.0,
+                              duration.inMilliseconds.toDouble(),
+                            ),
                             max: duration.inMilliseconds.toDouble(),
                             onChanged: (value) {
-                              player?.seek(Duration(milliseconds: value.toInt()));
-                              _startControlsTimer(); // CORRECCIÓN 3: Evita que desaparezcan los controles al deslizar
+                              player?.seek(
+                                Duration(milliseconds: value.toInt()),
+                              );
+                              _startControlsTimer();
                             },
                           ),
                         ),
@@ -873,7 +885,9 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                           ),
                         ),
                         Text(
-                          isVod ? _formatDuration(duration) : _formatDuration(position),
+                          isVod
+                              ? _formatDuration(duration)
+                              : _formatDuration(position),
                           style: TextStyle(
                             color: isVod ? Colors.white : Colors.white70,
                             fontWeight: FontWeight.bold,
@@ -887,16 +901,22 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
               ),
             ),
           ),
-        ),
-        if (_showVolumeIndicator || _showBrightnessIndicator)
-          Center(
-            child: _showVolumeIndicator
-                ? _buildGestureIndicator(Icons.volume_up, _volume, Colors.blue)
-                : _buildGestureIndicator(Icons.brightness_6, _brightness, Colors.orange),
-          ),
-      ],
-    ),
-  );
-} // Cierra _buildCustomControls()
-
-} // <- AGREGA ESTA LLAVE AQUÍ para cerrar definitivamente la clase _HlsVideoPlayerState
+                    if (_showVolumeIndicator || _showBrightnessIndicator)
+            Center(
+              child: _showVolumeIndicator
+                  ? _buildGestureIndicator(
+                      Icons.volume_up,
+                      _volume,
+                      Colors.blue,
+                    )
+                  : _buildGestureIndicator(
+                      Icons.brightness_6,
+                      _brightness,
+                      Colors.orange,
+                ),
+            ),
+        ],
+      ),
+    );
+  }
+}
