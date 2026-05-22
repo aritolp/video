@@ -145,19 +145,24 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   void _updateStatus(PlayerStatus status, String message) {
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _currentStatus = status;
-    });
-    if (status == PlayerStatus.webFallback) {
-      _player?.dispose();
-      _player = null;
-      _videoController = null;
-      _fallbackTimer?.cancel();
-    }
-    widget.onStatusChanged?.call(status, message);
+  if (!mounted) return;
+
+  // CORRECCIÓN DE SEGURIDAD PARA TV: Quita el foco de todos los botones antes de cambiar de reproductor
+  if (status == PlayerStatus.webFallback) {
+    FocusManager.instance.primaryFocus?.unfocus(); 
+  }
+
+  setState(() {
+    _currentStatus = status;
+  });
+
+  if (status == PlayerStatus.webFallback) {
+    _player?.dispose();
+    _player = null;
+    _videoController = null;
+    _fallbackTimer?.cancel();
+  }
+  widget.onStatusChanged?.call(status, message);
   }
 
   String _formatDuration(Duration duration) {
@@ -681,230 +686,215 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     );
   }
   Widget _buildCustomControls() {
-    final bool isPlaying = _isPlaying;
-    final Duration position = _position;
-    final Duration duration = _duration;
-    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
-    final player = _player;
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          GestureDetector(
-            onVerticalDragUpdate: (details) => _onVerticalDragUpdate(
-              details,
-              MediaQuery.of(context).size.width,
-            ),
-            onTap: _toggleControls,
-            behavior: HitTestBehavior.opaque,
-          ),
-          AnimatedOpacity(
-            opacity: _showControls ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: IgnorePointer(
-              ignoring: !_showControls,
-              child: Container(
-                color: Colors.black45,
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _controlButton(
-                                node: _switchPlayerNode,
-                                icon: Icons.swap_calls_rounded,
-                                onPressed: () {
-                                  _updateStatus(
-                                    PlayerStatus.webFallback,
-                                    'Cambiando a Modo Web...',
+  final bool isPlaying = _isPlaying;
+  final Duration position = _position;
+  final Duration duration = _duration;
+  final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
+  final player = _player;
+  
+  // Detectamos si es una TV para apagar gestos táctiles conflictivos
+  final bool isTvMode = MediaQuery.of(context).navigationMode == NavigationMode.directional;
+
+  return Positioned.fill(
+    child: Stack(
+      children: [
+        GestureDetector(
+          // CORRECCIÓN 1: Desactivado por completo en TV para evitar interferencias con el D-Pad
+          onVerticalDragUpdate: isTvMode 
+              ? null 
+              : (details) => _onVerticalDragUpdate(details, MediaQuery.of(context).size.width),
+          onTap: _toggleControls,
+          behavior: HitTestBehavior.opaque,
+        ),
+        AnimatedOpacity(
+          opacity: _showControls ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 300),
+          child: IgnorePointer(
+            ignoring: !_showControls,
+            child: Container(
+              color: Colors.black45,
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _controlButton(
+                              node: _switchPlayerNode,
+                              icon: Icons.swap_calls_rounded,
+                              onPressed: () {
+                                _updateStatus(
+                                  PlayerStatus.webFallback,
+                                  'Cambiando a Modo Web...',
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8.0),
+                            _controlButton(
+                              node: _fullscreenNode,
+                              icon: Icons.fullscreen_rounded,
+                              onPressed: () async {
+                                widget.onToggleFullScreen?.call();
+                                
+                                // CORRECCIÓN 2: Pequeña espera para dar tiempo a que cambie al WebViewer alternativo
+                                await Future.delayed(const Duration(milliseconds: 250));
+                                if (!mounted) return;
+
+                                final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+                                if (isLandscape) {
+                                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+                                } else {
+                                  SystemChrome.setEnabledSystemUIMode(
+                                    SystemUiMode.manual, 
+                                    overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
                                   );
-                                },
-                              ),
-                              const SizedBox(width: 8.0),
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                                 
+                  const Spacer(),
+                  FocusTraversalGroup(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (isVod)
+                          _controlButton(
+                            node: _rewindNode,
+                            icon: Icons.replay_10_rounded,
+                            size: 24.0,
+                            onPressed: () => _seekRelative(const Duration(seconds: -10)),
+                          ),
+                        const SizedBox(width: 12.0),
                         _controlButton(
-                                node: _fullscreenNode,
-                                icon: Icons.fullscreen_rounded,
-                                onPressed: () async {
-                                  widget.onToggleFullScreen?.call();
-                                  await Future.delayed(const Duration(milliseconds: 250));
-                                  if (mounted) {
-                                    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-                                    if (isLandscape) {
-                                      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-                                    } else {
-                                      SystemChrome.setEnabledSystemUIMode(
-                                        SystemUiMode.manual, 
-                                        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-                                      );
-                                    }
-                                  }
-                                },
-                              ),
-                            ],
+                          node: _playPauseNode,
+                          icon: isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                          size: 40.0,
+                          onPressed: () {
+                            if (player != null) {
+                              isPlaying ? player.pause() : player.play();
+                            }
+                            _startControlsTimer();
+                          },
+                        ),
+                        const SizedBox(width: 12.0),
+                        if (isVod)
+                          _controlButton(
+                            node: _forwardNode,
+                            icon: Icons.forward_10_rounded,
+                            size: 24.0,
+                            onPressed: () => _seekRelative(const Duration(seconds: 10)),
+                          ),
+                        const SizedBox(width: 20.0),
+                        _controlButton(
+                          node: _subtitleNode,
+                          icon: Icons.closed_caption_rounded,
+                          size: 24.0,
+                          onPressed: _showSubtitleMenu,
+                        ),
+                        const SizedBox(width: 12.0),
+                        _controlButton(
+                          node: _audioNode,
+                          icon: Icons.translate_rounded,
+                          size: 24.0,
+                          onPressed: _showAudioMenu,
+                        ),
+                        const SizedBox(width: 12.0),
+                        _controlButton(
+                          node: _codecNode,
+                          icon: Icons.settings_input_component_rounded,
+                          size: 24.0,
+                          onPressed: _switchCodec,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  if (isVod)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: Focus(
+                        focusNode: _sliderNode,
+                        onKeyEvent: (node, event) {
+                          if (event is KeyDownEvent) {
+                            if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
+                              _seekRelative(const Duration(seconds: -10));
+                              return KeyEventResult.handled;
+                            }
+                            if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
+                              _seekRelative(const Duration(seconds: 10));
+                              return KeyEventResult.handled;
+                            }
+                          }
+                          return KeyEventResult.ignored;
+                        },
+                        child: SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 3.0,
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                            activeTrackColor: Colors.red,
+                            inactiveTrackColor: Colors.white24,
+                            thumbColor: Colors.red,
+                            overlayColor: Colors.red.withOpacity(0.2),
+                          ),
+                          child: Slider(
+                            value: position.inMilliseconds.toDouble().clamp(
+                                  0.0,
+                                  duration.inMilliseconds.toDouble(),
+                                ),
+                            max: duration.inMilliseconds.toDouble(),
+                            onChanged: (value) {
+                              player?.seek(Duration(milliseconds: value.toInt()));
+                              _startControlsTimer(); // CORRECCIÓN 3: Evita que desaparezcan los controles al deslizar
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(40.0, 0.0, 40.0, 20.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(position),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.0,
+                          ),
+                        ),
+                        Text(
+                          isVod ? _formatDuration(duration) : _formatDuration(position),
+                          style: TextStyle(
+                            color: isVod ? Colors.white : Colors.white70,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13.0,
                           ),
                         ),
                       ],
                     ),
-                                   
-                     const Spacer(),
-                    FocusTraversalGroup(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (isVod)
-                            _controlButton(
-                              node: _rewindNode,
-                              icon: Icons.replay_10_rounded,
-                              size: 24.0,
-                              onPressed: () =>
-                                  _seekRelative(const Duration(seconds: -10)),
-                            ),
-                          const SizedBox(width: 12.0),
-                          _controlButton(
-                            node: _playPauseNode,
-                            icon: isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            size: 40.0,
-                            onPressed: () {
-                              if (player != null) {
-                                isPlaying ? player.pause() : player.play();
-                              }
-                              _startControlsTimer();
-                            },
-                          ),
-                          const SizedBox(width: 12.0),
-                          if (isVod)
-                            _controlButton(
-                              node: _forwardNode,
-                              icon: Icons.forward_10_rounded,
-                              size: 24.0,
-                              onPressed: () =>
-                                  _seekRelative(const Duration(seconds: 10)),
-                            ),
-                          const SizedBox(width: 20.0),
-                          _controlButton(
-                            node: _subtitleNode,
-                            icon: Icons.closed_caption_rounded,
-                            size: 24.0,
-                            onPressed: _showSubtitleMenu,
-                          ),
-                          const SizedBox(width: 12.0),
-                          _controlButton(
-                            node: _audioNode,
-                            icon: Icons.translate_rounded,
-                            size: 24.0,
-                            onPressed: _showAudioMenu,
-                          ),
-                          const SizedBox(width: 12.0),
-                          _controlButton(
-                            node: _codecNode,
-                            icon: Icons.settings_input_component_rounded,
-                            size: 24.0,
-                            onPressed: _switchCodec,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    if (isVod)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: Focus(
-                          focusNode: _sliderNode,
-                          onKeyEvent: (node, event) {
-                            if (event is KeyDownEvent) {
-                              if (event.logicalKey ==
-                                  LogicalKeyboardKey.arrowLeft) {
-                                _seekRelative(const Duration(seconds: -10));
-                                return KeyEventResult.handled;
-                              }
-                              if (event.logicalKey ==
-                                  LogicalKeyboardKey.arrowRight) {
-                                _seekRelative(const Duration(seconds: 10));
-                                return KeyEventResult.handled;
-                              }
-                            }
-                            return KeyEventResult.ignored;
-                          },
-                          child: SliderTheme(
-                            data: SliderThemeData(
-                              trackHeight: 3.0,
-                              thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 6.0,
-                              ),
-                              activeTrackColor: Colors.red,
-                              inactiveTrackColor: Colors.white24,
-                              thumbColor: Colors.red,
-                              overlayColor: Colors.red.withOpacity(0.2),
-                            ),
-                            child: Slider(
-                              value: position.inMilliseconds.toDouble().clamp(
-                                0.0,
-                                duration.inMilliseconds.toDouble(),
-                              ),
-                              max: duration.inMilliseconds.toDouble(),
-                              onChanged: (value) {
-                                player?.seek(
-                                  Duration(milliseconds: value.toInt()),
-                                );
-                                _startControlsTimer();
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(40.0, 0.0, 40.0, 20.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _formatDuration(position),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.0,
-                            ),
-                          ),
-                          Text(
-                            isVod
-                                ? _formatDuration(duration)
-                                : _formatDuration(position),
-                            style: TextStyle(
-                              color: isVod ? Colors.white : Colors.white70,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          if (_showVolumeIndicator || _showBrightnessIndicator)
-            Center(
-              child: _showVolumeIndicator
-                  ? _buildGestureIndicator(
-                      Icons.volume_up,
-                      _volume,
-                      Colors.blue,
-                    )
-                  : _buildGestureIndicator(
-                      Icons.brightness_6,
-                      _brightness,
-                      Colors.orange,
-                    ),
-            ),
-        ],
-      ),
-    );
-  }
-                          }
+        ),
+        if (_showVolumeIndicator || _showBrightnessIndicator)
+          Center(
+            child: _showVolumeIndicator
+                ? _buildGestureIndicator(Icons.volume_up, _volume, Colors.blue)
+                : _buildGestureIndicator(Icons.brightness_6, _brightness, Colors.orange),
+          ),
+      ],
+    ),
+  );
+}
