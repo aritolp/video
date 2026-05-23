@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:tvplus/player_status.dart';
@@ -146,19 +145,24 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
   }
 
   void _updateStatus(PlayerStatus status, String message) {
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _currentStatus = status;
-    });
-    if (status == PlayerStatus.webFallback) {
-      _player?.dispose();
-      _player = null;
-      _videoController = null;
-      _fallbackTimer?.cancel();
-    }
-    widget.onStatusChanged?.call(status, message);
+  if (!mounted) return;
+
+  // CORRECCIÓN DE SEGURIDAD PARA TV: Quita el foco de todos los botones antes de cambiar de reproductor
+  if (status == PlayerStatus.webFallback) {
+    FocusManager.instance.primaryFocus?.unfocus(); 
+  }
+
+  setState(() {
+    _currentStatus = status;
+  });
+
+  if (status == PlayerStatus.webFallback) {
+    _player?.dispose();
+    _player = null;
+    _videoController = null;
+    _fallbackTimer?.cancel();
+  }
+  widget.onStatusChanged?.call(status, message);
   }
 
   String _formatDuration(Duration duration) {
@@ -681,28 +685,12 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ),
     );
   }
-  Future<void> _restoreSystemUI() async {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
-    
-    await Future.delayed(const Duration(milliseconds: 300));
-    
-    if (mounted) {
-      await SystemChrome.setEnabledSystemUIMode(
-        SystemUiMode.manual, 
-        overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
-      );
-    }
-  }
-
-  // 2. CONTROLES DEL REPRODUCTOR (Ya corregidos y limpios)
   Widget _buildCustomControls() {
-    final bool isPlaying = _isPlaying;
-    final Duration position = _position;
-    final Duration duration = _duration;
-    final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
-    final player = _player;
+  final bool isPlaying = _isPlaying;
+  final Duration position = _position;
+  final Duration duration = _duration;
+  final bool isVod = duration > Duration.zero && duration.inSeconds > 0;
+  final player = _player;
   
   // Detectamos si es una TV para apagar gestos táctiles conflictivos
   final bool isTvMode = MediaQuery.of(context).navigationMode == NavigationMode.directional;
@@ -711,6 +699,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
     child: Stack(
       children: [
         GestureDetector(
+          // CORRECCIÓN 1: Desactivado por completo en TV para evitar interferencias con el D-Pad
           onVerticalDragUpdate: isTvMode 
               ? null 
               : (details) => _onVerticalDragUpdate(details, MediaQuery.of(context).size.width),
@@ -751,21 +740,18 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                               onPressed: () async {
                                 widget.onToggleFullScreen?.call();
                                 
-                                if (isTvMode) return;
-
+                                // CORRECCIÓN 2: Pequeña espera para dar tiempo a que cambie al WebViewer alternativo
                                 await Future.delayed(const Duration(milliseconds: 250));
                                 if (!mounted) return;
 
                                 final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-                                
                                 if (isLandscape) {
-                                  await _restoreSystemUI();
+                                  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
                                 } else {
-                                  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-                                  await SystemChrome.setPreferredOrientations([
-                                    DeviceOrientation.landscapeLeft,
-                                    DeviceOrientation.landscapeRight,
-                                  ]);
+                                  SystemChrome.setEnabledSystemUIMode(
+                                    SystemUiMode.manual, 
+                                    overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
+                                  );
                                 }
                               },
                             ),
@@ -774,6 +760,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                       ),
                     ],
                   ),
+                                 
                   const Spacer(),
                   FocusTraversalGroup(
                     child: Row(
@@ -866,7 +853,7 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
                             max: duration.inMilliseconds.toDouble(),
                             onChanged: (value) {
                               player?.seek(Duration(milliseconds: value.toInt()));
-                              _startControlsTimer();
+                              _startControlsTimer(); // CORRECCIÓN 3: Evita que desaparezcan los controles al deslizar
                             },
                           ),
                         ),
@@ -910,5 +897,6 @@ class _HlsVideoPlayerState extends State<HlsVideoPlayer> {
       ],
     ),
   );
-}
-}
+} // Cierra _buildCustomControls()
+
+} // <- AGREGA ESTA LLAVE AQUÍ para cerrar definitivamente la clase _HlsVideoPlayerState
